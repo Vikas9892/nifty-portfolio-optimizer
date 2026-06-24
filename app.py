@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from pypfopt import EfficientFrontier, expected_returns, risk_models
+import streamlit.runtime as streamlit_runtime
 import yfinance as yf
 
 
@@ -116,7 +117,59 @@ def compare_with_nifty(price_data, weights):
     return basket_return, nifty_return
 
 
-if __name__ == "__main__":
+def plot_allocation_pie(weights):
+    """Create a pie chart of optimized weights."""
+    labels = list(weights.keys())
+    values = list(weights.values())
+    fig, ax = plt.subplots(figsize=(7, 7))
+    ax.pie(values, labels=labels, autopct="%1.1f%%", startangle=90)
+    ax.set_title("Portfolio Allocation")
+    ax.axis("equal")
+    return fig
+
+
+def render_dashboard(data, returns, cleaned_weights, frontier, basket_return, nifty_return):
+    """Render the Streamlit dashboard."""
+    import streamlit as st
+
+    st.set_page_config(page_title="Nifty Portfolio Optimizer", layout="wide")
+    st.title("Nifty Portfolio Optimizer")
+    st.caption("A PyPortfolioOpt side project for stock selection, optimization, and benchmarking.")
+
+    top_left, top_right = st.columns(2)
+    with top_left:
+        st.metric("Optimized Annual Return", f"{basket_return:.2%}")
+    with top_right:
+        st.metric("Nifty Annual Return", f"{nifty_return:.2%}")
+
+    st.subheader("Selected Stocks")
+    st.write(list(data.columns))
+
+    st.subheader("Optimal Weights")
+    weights_frame = pd.DataFrame(list(cleaned_weights.items()), columns=["Ticker", "Weight"])
+    st.dataframe(weights_frame, use_container_width=True)
+
+    chart_left, chart_right = st.columns(2)
+    with chart_left:
+        st.subheader("Efficient Frontier")
+        st.image(PLOTS_DIR / "efficient_frontier.png", use_container_width=True)
+    with chart_right:
+        st.subheader("Correlation Matrix")
+        st.image(PLOTS_DIR / "correlation_heatmap.png", use_container_width=True)
+
+    st.subheader("Portfolio Allocation Pie Chart")
+    st.pyplot(plot_allocation_pie(cleaned_weights))
+
+    st.subheader("Daily Returns Snapshot")
+    st.dataframe(returns.head(), use_container_width=True)
+
+
+def running_in_streamlit():
+    """Detect whether the script is running inside Streamlit."""
+    return streamlit_runtime.exists()
+
+
+def main():
     data = download_prices()
     print(data.head())
     returns = calculate_returns(data)
@@ -131,3 +184,10 @@ if __name__ == "__main__":
     save_correlation_heatmap(returns)
     basket_return, nifty_return = compare_with_nifty(data, cleaned_weights)
     print({"basket_return": basket_return, "nifty_return": nifty_return})
+
+    if running_in_streamlit():
+        render_dashboard(data, returns, cleaned_weights, frontier, basket_return, nifty_return)
+
+
+if __name__ == "__main__":
+    main()
