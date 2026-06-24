@@ -123,6 +123,31 @@ The dashboard shows:
 - Portfolio allocation pie chart
 - Daily returns snapshot
 
+### Dashboard Overview
+
+![Dashboard Overview](plots/dashboard_overview.png)
+
+### Efficient Frontier
+
+![Efficient Frontier](plots/efficient_frontier.png)
+
+### Correlation Heatmap
+
+![Correlation Heatmap](plots/correlation_heatmap.png)
+
+### Portfolio Allocation
+
+![Portfolio Allocation](plots/portfolio_allocation.png)
+
+## Features
+
+- Sharpe Ratio Optimization
+- Monte Carlo Portfolio Simulation
+- Efficient Frontier Visualization
+- Correlation Analysis
+- Nifty 50 Benchmarking
+- Portfolio Weight Constraints
+
 ## Notes
 
 - The app is designed as a compact but resume-worthy portfolio project rather than a production trading system.

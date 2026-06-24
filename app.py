@@ -92,7 +92,7 @@ def create_frontier_figure(portfolios, opt_ret: float, opt_vol: float):
     ax.set_xlabel("Annual Volatility")
     ax.set_ylabel("Annual Return")
     ax.legend(loc="best")
-    fig.tight_layout()
+    fig.subplots_adjust(top=0.90, right=0.88, hspace=0.30, wspace=0.25)
     return fig
 
 
@@ -102,7 +102,65 @@ def create_correlation_figure(returns):
     fig, ax = plt.subplots(figsize=(8, 6))
     sns.heatmap(corr, annot=True, cmap="coolwarm", fmt=".2f", square=True, ax=ax)
     ax.set_title("Correlation Heatmap")
-    fig.tight_layout()
+    fig.subplots_adjust(top=0.90, right=0.88, hspace=0.30, wspace=0.25)
+    return fig
+
+
+def create_dashboard_overview_figure(returns, portfolios, cleaned_weights, ret, vol, sharpe, nifty_return):
+    """Build a static overview figure similar to the Streamlit dashboard."""
+    fig = plt.figure(figsize=(14, 9))
+    grid = fig.add_gridspec(2, 2, height_ratios=[1, 3], hspace=0.28, wspace=0.22)
+
+    metrics_ax = fig.add_subplot(grid[0, :])
+    metrics_ax.axis("off")
+    metrics_text = (
+        f"Expected Return: {ret * 100:.2f}%    "
+        f"Volatility: {vol * 100:.2f}%    "
+        f"Sharpe Ratio: {sharpe:.2f}    "
+        f"Nifty Return: {nifty_return * 100:.2f}%"
+    )
+    metrics_ax.text(
+        0.01,
+        0.65,
+        "Nifty Portfolio Optimizer Dashboard Overview",
+        fontsize=16,
+        fontweight="bold",
+        va="center",
+    )
+    metrics_ax.text(0.01, 0.25, metrics_text, fontsize=12, va="center")
+
+    frontier_ax = fig.add_subplot(grid[1, 0])
+    scatter = frontier_ax.scatter(
+        portfolios["volatility"],
+        portfolios["return"],
+        c=portfolios["sharpe"],
+        cmap="viridis",
+        s=7,
+        alpha=0.5,
+    )
+    frontier_ax.scatter([vol], [ret], marker="*", s=220, color="red")
+    frontier_ax.set_title("Efficient Frontier")
+    frontier_ax.set_xlabel("Annual Volatility")
+    frontier_ax.set_ylabel("Annual Return")
+    fig.colorbar(scatter, ax=frontier_ax, label="Sharpe Ratio")
+
+    pie_ax = fig.add_subplot(grid[1, 1])
+    non_zero_weights = {k: v for k, v in cleaned_weights.items() if v > 0}
+    labels = list(non_zero_weights.keys())
+    values = list(non_zero_weights.values())
+    wedges, _ = pie_ax.pie(
+        values,
+        labels=None,
+        startangle=90,
+        explode=[0.03] * len(values),
+        wedgeprops={"width": 0.45, "edgecolor": "white", "linewidth": 1.5},
+    )
+    legend_labels = [f"{ticker}: {weight:.1%}" for ticker, weight in zip(labels, values)]
+    pie_ax.legend(wedges, legend_labels, title="Allocation", loc="center left", bbox_to_anchor=(1.0, 0.5))
+    pie_ax.set_title("Portfolio Allocation")
+    pie_ax.axis("equal")
+
+    fig.subplots_adjust(top=0.90, right=0.88, hspace=0.30, wspace=0.25)
     return fig
 
 
@@ -224,6 +282,19 @@ def run_pipeline(stocks, start, end, max_weight, num_portfolios):
     # Keep plot artifacts in the repository for README screenshots.
     save_plot(create_frontier_figure(frontier, ret, vol), "efficient_frontier.png")
     save_plot(create_correlation_figure(returns), "correlation_heatmap.png")
+    save_plot(plot_allocation_pie(cleaned_weights), "portfolio_allocation.png")
+    save_plot(
+        create_dashboard_overview_figure(
+            returns=returns,
+            portfolios=frontier,
+            cleaned_weights=cleaned_weights,
+            ret=ret,
+            vol=vol,
+            sharpe=sharpe,
+            nifty_return=nifty_return,
+        ),
+        "dashboard_overview.png",
+    )
 
     print(data.head())
     print(returns.head())
