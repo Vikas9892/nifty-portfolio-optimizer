@@ -204,7 +204,19 @@ def plot_allocation_pie(weights):
     return fig
 
 
-def render_dashboard(data, returns, cleaned_weights, frontier, basket_return, nifty_return, ret, vol, sharpe):
+def render_dashboard(
+    data,
+    returns,
+    cleaned_weights,
+    frontier,
+    basket_return,
+    nifty_return,
+    ret,
+    vol,
+    sharpe,
+    max_weight,
+    num_portfolios,
+):
     """Render the Streamlit dashboard."""
     import streamlit as st
 
@@ -217,6 +229,16 @@ def render_dashboard(data, returns, cleaned_weights, frontier, basket_return, ni
     metric_2.metric("Volatility", f"{vol * 100:.2f}%")
     metric_3.metric("Sharpe Ratio", f"{sharpe:.2f}")
     metric_4.metric("Nifty Return", f"{nifty_return * 100:.2f}%")
+
+    st.subheader("Portfolio Summary")
+    st.markdown(
+        f"""
+Stocks Selected: {len(data.columns)}  
+Simulation Count: {num_portfolios}  
+Max Weight Cap: {max_weight * 100:.0f}%  
+Optimization Method: Maximum Sharpe Ratio
+"""
+    )
 
     st.caption(f"Optimized annualized basket return (realized): {basket_return:.2%}")
 
@@ -332,6 +354,8 @@ def main():
             ret=ret,
             vol=vol,
             sharpe=sharpe,
+            max_weight=max_weight,
+            num_portfolios=num_portfolios,
         )
 
 
