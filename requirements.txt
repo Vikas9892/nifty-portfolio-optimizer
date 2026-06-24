@@ -1,1 +1,7 @@
-# Dependencies will be filled in during setup
+numpy
+pandas
+matplotlib
+streamlit
+yfinance
+pyportfolioopt
+seaborn
