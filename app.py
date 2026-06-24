@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+from pypfopt import EfficientFrontier, expected_returns, risk_models
 import yfinance as yf
 
 
@@ -30,8 +31,24 @@ def calculate_returns(price_data):
     return returns
 
 
+def optimize_portfolio(price_data):
+    """Optimize the basket for maximum Sharpe ratio."""
+    mu = expected_returns.mean_historical_return(price_data)
+    covariance = risk_models.sample_cov(price_data)
+    frontier = EfficientFrontier(mu, covariance)
+    weights = frontier.max_sharpe()
+    cleaned_weights = frontier.clean_weights()
+    performance = frontier.portfolio_performance(verbose=True)
+    return mu, covariance, cleaned_weights, performance
+
+
 if __name__ == "__main__":
     data = download_prices()
     print(data.head())
     returns = calculate_returns(data)
     print(returns.head())
+    mu, covariance, cleaned_weights, performance = optimize_portfolio(data)
+    print(mu)
+    print(covariance)
+    print(cleaned_weights)
+    print(performance)
