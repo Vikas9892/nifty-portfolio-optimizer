@@ -36,17 +36,28 @@ This makes the numbers comparable to real-world benchmarks like fixed deposit ra
 
 ---
 
-## Stock Basket
+## Stock Universe
 
-| Ticker | Company | Sector |
-|---|---|---|
-| RELIANCE.NS | Reliance Industries | Conglomerate / Energy |
-| TCS.NS | Tata Consultancy Services | IT Services |
-| INFY.NS | Infosys | IT Services |
-| HDFCBANK.NS | HDFC Bank | Banking |
-| ICICIBANK.NS | ICICI Bank | Banking |
+The app exposes the full **Nifty 50** across 14 sectors. Users can build any basket from this universe using the sidebar:
 
-These five represent a cross-section of India's large-cap market across three distinct sectors, which provides meaningful diversification. The benchmark is the **Nifty 50 index** (`^NSEI`).
+| Sector | Stocks |
+|---|---|
+| IT | TCS, INFY, HCLTECH, WIPRO, TECHM |
+| Banking | HDFCBANK, ICICIBANK, SBIN, KOTAKBANK, AXISBANK, INDUSINDBK |
+| Financial Services | BAJFINANCE, BAJAJFINSV, HDFCLIFE, SBILIFE |
+| Energy | RELIANCE, ONGC, BPCL, NTPC, POWERGRID, COALINDIA |
+| FMCG | HINDUNILVR, ITC, NESTLEIND, BRITANNIA, TATACONSUM |
+| Pharma | SUNPHARMA, DRREDDY, CIPLA, DIVISLAB |
+| Auto | MARUTI, TATAMOTORS, BAJAJ-AUTO, HEROMOTOCO, EICHERMOT, M&M |
+| Metals & Mining | TATASTEEL, JSWSTEEL, HINDALCO |
+| Cement | ULTRACEMCO, SHREECEM, GRASIM |
+| Conglomerate / Infra | LT, ADANIPORTS, ADANIENT |
+| Telecom | BHARTIARTL |
+| Consumer | ASIANPAINT, TITAN |
+| Healthcare | APOLLOHOSP |
+| Agro / Chemicals | UPL |
+
+The **default basket** is a curated 15-stock cross-sector selection that loads on first run. The benchmark is the **Nifty 50 index** (`^NSEI`).
 
 ---
 
@@ -92,11 +103,11 @@ mu = expected_returns.mean_historical_return(price_data)
 ```
 `PyPortfolioOpt` computes the annualized mean return for each stock from historical daily returns.
 
-### 3. Build the covariance matrix
+### 3. Build the covariance matrix (Ledoit-Wolf shrinkage)
 ```python
-covariance = risk_models.sample_cov(price_data)
+covariance = risk_models.CovarianceShrinkage(price_data).ledoit_wolf()
 ```
-The sample covariance matrix captures how each pair of stocks moves together. High covariance between two stocks means holding both doesn't reduce risk as much.
+With a large number of assets, the **sample covariance matrix** becomes numerically unstable — small estimation errors get amplified, leading the optimizer to take extreme positions. **Ledoit-Wolf shrinkage** regularizes the matrix by pulling extreme correlations toward zero, producing a more robust estimate. This is standard practice in institutional portfolio construction.
 
 ### 4. Solve the optimization
 ```python
