@@ -1,5 +1,8 @@
+import json
+
 import pandas as pd
 
+from . import database as db
 from .visualization import create_correlation_figure, create_frontier_figure, plot_allocation_pie
 
 
@@ -8,23 +11,26 @@ def render_dashboard(
     basket_return, nifty_return, ret, vol, sharpe,
     max_weight, num_portfolios,
 ):
-    """Render the Streamlit dashboard."""
+    """Render the Streamlit dashboard with Optimizer and History tabs."""
     import streamlit as st
 
     st.set_page_config(page_title="Nifty Portfolio Optimizer", layout="wide")
     st.title("Nifty Portfolio Optimizer")
     st.caption("Mean-variance optimization over the Nifty 50 universe with Ledoit-Wolf covariance shrinkage.")
 
-    col1, col2, col3, col4, col5 = st.columns(5)
-    col1.metric("Expected Return", f"{ret * 100:.2f}%")
-    col2.metric("Volatility", f"{vol * 100:.2f}%")
-    col3.metric("Sharpe Ratio", f"{sharpe:.2f}")
-    col4.metric("Nifty 50 Return", f"{nifty_return * 100:.2f}%")
-    col5.metric("vs Benchmark", f"{(basket_return - nifty_return) * 100:+.2f}%")
+    tab_optimizer, tab_history = st.tabs(["Optimizer", "Past Optimizations"])
 
-    st.subheader("Portfolio Summary")
-    st.markdown(
-        f"""
+    with tab_optimizer:
+        col1, col2, col3, col4, col5 = st.columns(5)
+        col1.metric("Expected Return", f"{ret * 100:.2f}%")
+        col2.metric("Volatility", f"{vol * 100:.2f}%")
+        col3.metric("Sharpe Ratio", f"{sharpe:.2f}")
+        col4.metric("Nifty 50 Return", f"{nifty_return * 100:.2f}%")
+        col5.metric("vs Benchmark", f"{(basket_return - nifty_return) * 100:+.2f}%")
+
+        st.subheader("Portfolio Summary")
+        st.markdown(
+            f"""
 Stocks in basket: **{len(data.columns)}**
 Stocks with non-zero weight: **{sum(1 for v in cleaned_weights.values() if v > 0)}**
 Simulation count: **{num_portfolios:,}**
@@ -32,28 +38,84 @@ Max weight cap: **{max_weight * 100:.0f}%**
 Covariance model: **Ledoit-Wolf Shrinkage**
 Optimization method: **Maximum Sharpe Ratio**
 """
+        )
+        st.caption(f"Realized annualized basket return: {basket_return:.2%}")
+
+        left, right = st.columns([1.2, 1])
+        with left:
+            st.subheader("Optimal Weights")
+            weights_frame = pd.DataFrame(list(cleaned_weights.items()), columns=["Ticker", "Weight"])
+            weights_frame = weights_frame[weights_frame["Weight"] > 0].sort_values("Weight", ascending=False)
+            weights_frame["Weight"] = weights_frame["Weight"].map(lambda x: f"{x:.2%}")
+            st.dataframe(weights_frame, use_container_width=True)
+        with right:
+            st.subheader("Portfolio Allocation")
+            st.pyplot(plot_allocation_pie(cleaned_weights), clear_figure=True)
+
+        st.subheader("Correlation Heatmap")
+        st.pyplot(create_correlation_figure(returns), clear_figure=True)
+
+        st.subheader("Efficient Frontier")
+        st.pyplot(create_frontier_figure(frontier, ret, vol), clear_figure=True)
+
+        st.subheader("Daily Returns Snapshot")
+        st.dataframe(returns.head(15), use_container_width=True)
+
+    with tab_history:
+        _render_history_tab()
+
+
+def _render_history_tab():
+    """Render the Past Optimizations history tab."""
+    import streamlit as st
+
+    st.subheader("Past Optimizations")
+    history = db.load_portfolio_history()
+
+    if history.empty:
+        st.info("No past optimizations recorded yet. Run the optimizer to save your first result.")
+        return
+
+    display = history.copy()
+    display["expected_return"] = display["expected_return"].map(lambda x: f"{x:.2%}")
+    display["volatility"] = display["volatility"].map(lambda x: f"{x:.2%}")
+    display["sharpe"] = display["sharpe"].map(lambda x: f"{x:.2f}")
+    display["basket_return"] = display["basket_return"].map(
+        lambda x: f"{x:.2%}" if x is not None else "—"
     )
-    st.caption(f"Realized annualized basket return: {basket_return:.2%}")
+    display["nifty_return"] = display["nifty_return"].map(
+        lambda x: f"{x:.2%}" if x is not None else "—"
+    )
+    display["tickers"] = display["tickers"].map(lambda x: ", ".join(json.loads(x)))
+    display["created_at"] = pd.to_datetime(display["created_at"]).dt.strftime("%Y-%m-%d %H:%M UTC")
 
-    left, right = st.columns([1.2, 1])
-    with left:
-        st.subheader("Optimal Weights")
-        weights_frame = pd.DataFrame(list(cleaned_weights.items()), columns=["Ticker", "Weight"])
-        weights_frame = weights_frame[weights_frame["Weight"] > 0].sort_values("Weight", ascending=False)
-        weights_frame["Weight"] = weights_frame["Weight"].map(lambda x: f"{x:.2%}")
-        st.dataframe(weights_frame, use_container_width=True)
-    with right:
-        st.subheader("Portfolio Allocation")
-        st.pyplot(plot_allocation_pie(cleaned_weights), clear_figure=True)
+    st.dataframe(
+        display[["id", "created_at", "tickers", "start_date", "end_date",
+                  "expected_return", "volatility", "sharpe", "basket_return", "nifty_return"]],
+        use_container_width=True,
+    )
 
-    st.subheader("Correlation Heatmap")
-    st.pyplot(create_correlation_figure(returns), clear_figure=True)
+    id_to_label = dict(zip(history["id"], display["created_at"]))
+    selected_id = st.selectbox(
+        "Select a past portfolio to inspect its weights",
+        options=history["id"].tolist(),
+        format_func=lambda i: f"#{i}  —  {id_to_label[i]}",
+    )
 
-    st.subheader("Efficient Frontier")
-    st.pyplot(create_frontier_figure(frontier, ret, vol), clear_figure=True)
-
-    st.subheader("Daily Returns Snapshot")
-    st.dataframe(returns.head(15), use_container_width=True)
+    if selected_id is not None:
+        weights = db.load_portfolio_weights(selected_id)
+        row = history[history["id"] == selected_id].iloc[0]
+        tickers_list = json.loads(row["tickers"])
+        st.markdown(
+            f"**Portfolio #{selected_id}** · {row['start_date']} → {row['end_date']} · {len(tickers_list)} stocks"
+        )
+        weights_df = pd.DataFrame(list(weights.items()), columns=["Ticker", "Weight"])
+        weights_df["Weight"] = weights_df["Weight"].map(lambda x: f"{x:.2%}")
+        col_left, col_right = st.columns([1, 1.2])
+        with col_left:
+            st.dataframe(weights_df, use_container_width=True)
+        with col_right:
+            st.pyplot(plot_allocation_pie(weights), clear_figure=True)
 
 
 def get_streamlit_inputs():
