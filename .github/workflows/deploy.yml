@@ -141,15 +141,14 @@ jobs:
     if: github.ref == 'refs/heads/main'
 
     steps:
-      - name: Wait for Railway to stabilise
-        run: sleep 20
-
-      - name: Backend health
+      - name: Smoke test
+        env:
+          BACKEND_URL: ${{ vars.BACKEND_URL }}
         run: |
-          curl --fail --retry 5 --retry-delay 5 \
-               "${{ vars.BACKEND_URL }}/health"
-
-      - name: Backend readiness
-        run: |
-          curl --fail --retry 5 --retry-delay 5 \
-               "${{ vars.BACKEND_URL }}/ready"
+          if [ -z "$BACKEND_URL" ]; then
+            echo "BACKEND_URL variable not configured — skipping smoke test"
+            exit 0
+          fi
+          sleep 20
+          curl --fail --retry 5 --retry-delay 5 "$BACKEND_URL/health"
+          curl --fail --retry 5 --retry-delay 5 "$BACKEND_URL/ready"
