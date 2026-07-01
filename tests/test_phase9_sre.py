@@ -270,3 +270,204 @@ class TestSRERouter:
     def test_discard_missing_dlq_job_returns_404(self, client, auth_headers):
         resp = client.delete("/api/v1/sre/dlq/nonexistent-job-id", headers=auth_headers)
         assert resp.status_code == 404
+
+
+# ── JobService lifecycle (M7 — retry count + mark_dead) ───────────────────────
+
+
+class TestJobServiceLifecycle:
+    """
+    CacheService is a no-op without Redis (get→None, set→no-op).
+    Patch job_service.cache with an in-memory dict-backed mock so the full
+    lifecycle can be exercised without a running Redis instance.
+    """
+
+    @staticmethod
+    def _make_cache_mock():
+        store: dict = {}
+        m = MagicMock()
+        m.get.side_effect = lambda k: store.get(k)
+        m.set.side_effect = lambda k, v, ttl=300: store.update({k: v})
+        m.delete.side_effect = lambda k: store.pop(k, None)
+        return m
+
+    def test_mark_running_updates_status(self):
+        from backend.app.services.job_service import JobService, JobStatus
+
+        mc = self._make_cache_mock()
+        with patch("backend.app.services.job_service.cache", mc):
+            svc = JobService()
+            job = svc.create(user_id=1, request_data={})
+            svc.mark_running(job["job_id"])
+            updated = svc.get(job["job_id"])
+        assert updated["status"] == JobStatus.RUNNING
+        assert updated["started_at"] is not None
+
+    def test_mark_completed_stores_result(self):
+        from backend.app.services.job_service import JobService, JobStatus
+
+        mc = self._make_cache_mock()
+        with patch("backend.app.services.job_service.cache", mc):
+            svc = JobService()
+            job = svc.create(user_id=1, request_data={})
+            svc.mark_completed(job["job_id"], {"sharpe": 1.5})
+            updated = svc.get(job["job_id"])
+        assert updated["status"] == JobStatus.COMPLETED
+        assert updated["result"]["sharpe"] == 1.5
+
+    def test_mark_failed_records_error(self):
+        from backend.app.services.job_service import JobService, JobStatus
+
+        mc = self._make_cache_mock()
+        with patch("backend.app.services.job_service.cache", mc):
+            svc = JobService()
+            job = svc.create(user_id=1, request_data={})
+            svc.mark_failed(job["job_id"], "boom")
+            updated = svc.get(job["job_id"])
+        assert updated["status"] == JobStatus.FAILED
+        assert updated["error"] == "boom"
+
+    def test_increment_retry_increments_count(self):
+        from backend.app.services.job_service import JobService
+
+        mc = self._make_cache_mock()
+        with patch("backend.app.services.job_service.cache", mc):
+            svc = JobService()
+            job = svc.create(user_id=1, request_data={})
+            count1 = svc.increment_retry(job["job_id"])
+            count2 = svc.increment_retry(job["job_id"])
+        assert count1 == 1
+        assert count2 == 2
+
+    def test_increment_retry_returns_zero_for_missing_job(self):
+        from backend.app.services.job_service import JobService
+
+        mc = self._make_cache_mock()
+        with patch("backend.app.services.job_service.cache", mc):
+            svc = JobService()
+            assert svc.increment_retry("nonexistent-id") == 0
+
+    def test_mark_dead_updates_status(self):
+        from backend.app.services.job_service import JobService, JobStatus
+
+        mc = self._make_cache_mock()
+        with patch("backend.app.services.job_service.cache", mc):
+            svc = JobService()
+            job = svc.create(user_id=1, request_data={})
+            svc.mark_dead(job["job_id"])
+            updated = svc.get(job["job_id"])
+        assert updated["status"] == JobStatus.DEAD
+
+    def test_idempotency_returns_existing_job(self):
+        from backend.app.services.job_service import JobService
+
+        mc = self._make_cache_mock()
+        with patch("backend.app.services.job_service.cache", mc):
+            svc = JobService()
+            job1 = svc.create(user_id=1, request_data={}, idempotency_key="idem-1")
+            job2 = svc.create(user_id=1, request_data={}, idempotency_key="idem-1")
+        assert job1["job_id"] == job2["job_id"]
+
+    def test_retry_count_initialized_to_zero(self):
+        from backend.app.services.job_service import JobService
+
+        svc = JobService()
+        job = svc.create(user_id=1, request_data={})
+        assert job["retry_count"] == 0
+
+
+# ── DistributedLock release path ──────────────────────────────────────────────
+
+
+class TestDistributedLockRelease:
+    def test_release_calls_eval_on_redis(self):
+        from backend.app.services.distributed_lock import DistributedLock
+
+        mock_redis = MagicMock()
+        lock = DistributedLock("release-test", ttl=10)
+        lock._token = "my-token"
+        with patch.object(lock, "_get_client", return_value=mock_redis):
+            lock.release()
+        mock_redis.eval.assert_called_once()
+        assert lock._token is None
+
+    def test_release_no_op_when_no_client(self):
+        from backend.app.services.distributed_lock import DistributedLock
+
+        lock = DistributedLock("release-no-redis", ttl=10)
+        lock._token = "some-token"
+        with patch.object(lock, "_get_client", return_value=None):
+            lock.release()  # should not raise
+        # token cleared even without client? Actually no — client is None so we return early
+        # The token stays set since we returned early; that's fine.
+
+    def test_release_handles_eval_error_gracefully(self):
+        from backend.app.services.distributed_lock import DistributedLock
+
+        mock_redis = MagicMock()
+        mock_redis.eval.side_effect = RuntimeError("Redis connection lost")
+        lock = DistributedLock("release-error", ttl=10)
+        lock._token = "token-xyz"
+        with patch.object(lock, "_get_client", return_value=mock_redis):
+            lock.release()  # should not raise — exception is logged and swallowed
+        assert lock._token is None  # finally block clears token
+
+
+# ── DLQService Redis paths ────────────────────────────────────────────────────
+
+
+class TestDLQRedis:
+    def test_lpush_no_op_when_no_redis(self):
+        from backend.app.services.dlq_service import DLQService
+
+        svc = DLQService()
+        with patch.object(svc, "_client", return_value=None):
+            svc._lpush("dlq:index", "job-1")  # should not raise
+
+    def test_lrange_returns_empty_when_no_redis(self):
+        from backend.app.services.dlq_service import DLQService
+
+        svc = DLQService()
+        with patch.object(svc, "_client", return_value=None):
+            result = svc._lrange("dlq:index", 0, 10)
+        assert result == []
+
+    def test_lrem_no_op_when_no_redis(self):
+        from backend.app.services.dlq_service import DLQService
+
+        svc = DLQService()
+        with patch.object(svc, "_client", return_value=None):
+            svc._lrem("dlq:index", "job-1")  # should not raise
+
+    def test_lpush_with_mock_redis(self):
+        from backend.app.services.dlq_service import DLQService
+
+        svc = DLQService()
+        mock_redis = MagicMock()
+        with patch.object(svc, "_client", return_value=mock_redis):
+            svc._lpush("dlq:index", "job-1")
+        mock_redis.lpush.assert_called_once_with("dlq:index", "job-1")
+        mock_redis.expire.assert_called_once()
+
+    def test_lrange_with_mock_redis(self):
+        from backend.app.services.dlq_service import DLQService
+
+        svc = DLQService()
+        mock_redis = MagicMock()
+        mock_redis.lrange.return_value = [b"job-abc", b"job-def"]
+        with patch.object(svc, "_client", return_value=mock_redis):
+            result = svc._lrange("dlq:index", 0, 9)
+        assert result == ["job-abc", "job-def"]
+
+
+# ── FeatureFlags reset ────────────────────────────────────────────────────────
+
+
+class TestFeatureFlagsReset:
+    def test_reset_deletes_from_cache(self):
+        from backend.app.services.feature_flags import FeatureFlags
+
+        ff = FeatureFlags()
+        with patch("backend.app.services.feature_flags.cache") as mock_cache:
+            ff.reset("ENABLE_CACHE")
+        mock_cache.delete.assert_called_once_with("ff:ENABLE_CACHE")
