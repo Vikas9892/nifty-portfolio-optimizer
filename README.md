@@ -1,7 +1,76 @@
-
 # Nifty Portfolio Optimizer
 
-A mean-variance portfolio optimizer built on the full **Nifty 50 universe**. Given a user-defined basket of Indian large-cap stocks, it computes the weight allocation that maximizes the Sharpe ratio subject to position-size constraints, validates the result against a Monte Carlo frontier, and benchmarks realized performance against the Nifty 50 index.
+A production-grade, full-stack **mean-variance portfolio optimizer** for the Nifty 50 universe.
+
+**Backend**: FastAPI 0.111 · Python 3.11 · SQLAlchemy Core · PostgreSQL · Redis · RQ Workers · APScheduler · Prometheus  
+**Frontend**: React 18 · TypeScript · Vite · Recharts  
+**Infra**: Docker Compose · Nginx · Grafana · Alertmanager · JWT Auth
+
+---
+
+## Demo
+
+> **Watch the walkthrough** (5–10 min):
+> - Login / Register → Portfolio dashboard → Select Nifty 50 stocks
+> - Optimize (async job) → Efficient frontier chart → Save portfolio
+> - Redis cache hit vs. miss → Scheduler market refresh
+> - Prometheus metrics → Grafana dashboard → Alertmanager rules
+> - SRE endpoints: circuit breakers, feature flags, DLQ
+>
+> **[▶ Add demo video link here]** — Record with OBS or Loom, upload to YouTube/Loom, paste URL.
+>
+> *(M8 of the system design milestones — pending recording)*
+
+---
+
+## Documentation
+
+| Document | Description |
+|---|---|
+| [System Design](docs/system_design.md) | High-level architecture, request flows, auth flow, all 8 sequence diagrams |
+| [Low-Level Design](docs/low_level_design.md) | 12 design patterns with WHY — Repository, Strategy, Circuit Breaker, etc. |
+| [Design Decisions](docs/design_decisions.md) | 11 ADRs: FastAPI, Redis, JWT, RQ, PostgreSQL, Circuit Breaker, Feature Flags |
+| [Benchmarks](docs/benchmarks.md) | Real latency numbers: DB, JWT, Pydantic, PyPfOpt — measured locally |
+| [System Evolution](docs/evolution.md) | v1 single script → v10 distributed system — what changed and why |
+| [Production Checklist](docs/production_checklist.md) | 10-section deploy gate: HTTPS, secrets, monitoring, backup, alerting |
+| [API Reference](docs/api.md) | All REST endpoints with request/response schemas |
+| [Architecture Overview](docs/architecture.md) | High-level component diagram |
+| [Reliability](docs/reliability.md) | SLOs, failure scenarios, circuit breaker policy, DLQ runbook |
+| [Load Testing](docs/load_testing.md) | Locust results at 10/50/100/500/1000 concurrent users |
+| [Capacity Planning](docs/capacity_planning.md) | Resource projections for 100/1k/10k users |
+| [Disaster Recovery](docs/disaster_recovery.md) | RTO/RPO, backup restoration runbook |
+| [Chaos Testing](docs/chaos_testing.md) | Fault injection scenarios and expected behavior |
+| [Security Audit](docs/security_audit.md) | OWASP checklist, threat model, mitigations |
+| [Cost Estimate](docs/cost_estimate.md) | AWS/GCP cost breakdown for 3 tiers of scale |
+| [Deployment](docs/deployment.md) | Docker Compose, environment variables, production setup |
+| [Testing](docs/testing.md) | Test strategy, coverage config, how to run |
+| **Design Decisions /** | |
+| [Why FastAPI](docs/decisions/001-why-fastapi.md) | FastAPI vs Flask/Django/Tornado |
+| [Why SQLAlchemy Core](docs/decisions/002-why-sqlalchemy-core.md) | Core vs ORM |
+| [Why Redis](docs/decisions/003-why-redis.md) | Cache + Queue + Flags + DLQ |
+| [Why Repository Pattern](docs/decisions/004-why-repository-pattern.md) | Separation of SQL from business logic |
+| [Why JWT](docs/decisions/005-why-jwt.md) | Stateless auth for horizontal scaling |
+| [Why Background Jobs](docs/decisions/006-why-background-jobs.md) | RQ over Celery for async optimization |
+
+---
+
+## Quick Start (Full Stack — Docker)
+
+```bash
+git clone https://github.com/Vikas9892/nifty-portfolio-optimizer.git
+cd nifty-portfolio-optimizer
+cp .env.example .env          # fill in SECRET_KEY and DB credentials
+docker compose up --build -d
+
+# Verify:
+curl http://localhost:8000/health/ready
+# → {"status": "ready", "db": "ok", "redis": "ok"}
+
+# Open frontend:
+open http://localhost:3000
+```
+
+Services started: `api`, `frontend`, `nginx`, `postgres`, `redis`, `worker`, `prometheus`, `grafana`, `alertmanager`.
 
 ---
 
