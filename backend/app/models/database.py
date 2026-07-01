@@ -109,6 +109,22 @@ prices_table = Table(
     Column("last_updated", String(50), nullable=False),
 )
 
+# Phase 8 — async job tracking (persisted alongside Redis for durability)
+jobs_table = Table(
+    "jobs",
+    metadata,
+    Column("id", String(36), primary_key=True),
+    Column("user_id", Integer, ForeignKey("users.id"), nullable=True),
+    Column("status", String(20), nullable=False, server_default="queued"),
+    Column("job_type", String(50), nullable=False, server_default="optimize"),
+    Column("created_at", String(50), nullable=False),
+    Column("started_at", String(50), nullable=True),
+    Column("completed_at", String(50), nullable=True),
+    Column("result", Text, nullable=True),
+    Column("error", Text, nullable=True),
+    Column("idempotency_key", String(64), nullable=True, unique=False),
+)
+
 
 # ── Initialisation ────────────────────────────────────────────────────────────
 

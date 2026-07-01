@@ -1,11 +1,10 @@
 """
-SQLAlchemy engine factory.
+SQLAlchemy engine factory — Phase 8: connection pooling + pool event metrics.
 
-Returns a single shared engine for the process lifetime.
-Supports SQLite (development / testing) and PostgreSQL (production).
+Returns a single shared engine per process lifetime.
+Supports SQLite (development/testing) and PostgreSQL (production).
 Tests override `_engine` via monkeypatch before calling init_all_tables().
 """
-
 from __future__ import annotations
 
 from sqlalchemy import create_engine, event
@@ -22,7 +21,6 @@ def get_engine() -> Engine:
     from backend.app.core.config import settings
 
     url = settings.database_url
-    # Accept bare file paths for SQLite (e.g. "data/portfolio.db")
     if not any(url.startswith(s) for s in ("sqlite:", "postgresql:", "postgres:")):
         url = f"sqlite:///{url}"
 
@@ -39,13 +37,20 @@ def get_engine() -> Engine:
             dbapi_conn.execute("PRAGMA foreign_keys=ON")
 
     else:
+        # PostgreSQL — configurable pool to avoid exhausting connections under load
         engine = create_engine(
             url,
-            pool_size=5,
-            max_overflow=10,
-            pool_pre_ping=True,
+            pool_size=settings.db_pool_size,
+            max_overflow=settings.db_max_overflow,
+            pool_pre_ping=True,   # discard stale connections transparently
             echo=False,
         )
+
+        # Connection pool metrics (Phase 8)
+        @event.listens_for(engine, "checkout")
+        def _on_checkout(dbapi_conn, connection_record, connection_proxy):
+            from backend.app.services.metrics_service import metrics
+            metrics.increment("db:pool:checkouts")
 
     _engine = engine
     return _engine

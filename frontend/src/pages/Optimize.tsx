@@ -8,8 +8,15 @@ import { useOptimize } from '../hooks/useOptimize'
 import type { OptimizeRequest } from '../types/portfolio'
 import { fmt } from '../utils/formatters'
 
+const STATUS_LABEL: Record<string, string> = {
+  queued: 'Queued — waiting for worker…',
+  running: 'Running optimization…',
+  completed: 'Done',
+  failed: 'Failed',
+}
+
 export function Optimize() {
-  const { optimize, loading } = useOptimize()
+  const { optimize, loading, error, job } = useOptimize()
   const { currentPortfolio: p } = usePortfolioContext()
 
   const handleSubmit = async (req: OptimizeRequest) => {
@@ -32,33 +39,53 @@ export function Optimize() {
           <OptimizeForm onSubmit={handleSubmit} loading={loading} />
         </div>
 
-        {/* Right panel — results */}
+        {/* Right panel — results / status */}
         <div className="space-y-6 xl:col-span-2">
-          {loading && (
-            <div className="card flex h-64 items-center justify-center">
-              <div className="space-y-3 text-center">
-                <div className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Fetching prices &amp; optimizing…
+          {/* Job status banner */}
+          {loading && job && (
+            <div className="card flex items-center gap-4 p-4">
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-blue-600 border-t-transparent shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                  {STATUS_LABEL[job.status] ?? 'Processing…'}
                 </p>
                 <p className="text-xs text-gray-400">
-                  First run downloads 5 years of data — subsequent runs use the local cache.
+                  Job {job.job_id.slice(0, 8)}
+                  {job.status === 'queued' && ' · polling every 2s'}
+                  {job.status === 'running' && ' · fetching prices & computing weights'}
                 </p>
               </div>
             </div>
           )}
 
-          {!loading && !p && (
-            <div className="card flex h-64 items-center justify-center border-dashed">
-              <p className="text-sm text-gray-400">
-                Results will appear here after optimization.
-              </p>
+          {/* Simple spinner when loading but no job yet (queuing in-flight) */}
+          {loading && !job && (
+            <div className="card flex h-32 items-center justify-center gap-3">
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+              <p className="text-sm text-gray-500 dark:text-gray-400">Queuing job…</p>
             </div>
           )}
 
+          {/* Error state */}
+          {!loading && error && (
+            <div className="card border border-red-200 bg-red-50 p-4 dark:border-red-900 dark:bg-red-950">
+              <p className="text-sm font-medium text-red-700 dark:text-red-400">
+                Optimization failed
+              </p>
+              <p className="mt-0.5 text-xs text-red-600 dark:text-red-500">{error}</p>
+            </div>
+          )}
+
+          {/* Empty state */}
+          {!loading && !p && !error && (
+            <div className="card flex h-64 items-center justify-center border-dashed">
+              <p className="text-sm text-gray-400">Results will appear here after optimization.</p>
+            </div>
+          )}
+
+          {/* Results */}
           {!loading && p && (
             <>
-              {/* Metrics */}
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
                 <MetricCard
                   label="Expected Return"
@@ -78,7 +105,6 @@ export function Optimize() {
                 />
               </div>
 
-              {/* Charts */}
               <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                 <div className="card p-6">
                   <h3 className="mb-4 text-sm font-semibold text-gray-900 dark:text-white">
@@ -98,7 +124,6 @@ export function Optimize() {
                 </div>
               </div>
 
-              {/* Weights table */}
               <div className="card p-6">
                 <h3 className="mb-4 text-sm font-semibold text-gray-900 dark:text-white">
                   Optimal Weights

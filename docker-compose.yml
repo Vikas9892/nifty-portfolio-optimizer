@@ -1,7 +1,6 @@
 # ── Development docker-compose ────────────────────────────────────────────────
-# "docker compose up --build" starts the full stack locally.
-# Uses SQLite (no PostgreSQL setup needed).
-# Redis is optional — the app falls back gracefully when REDIS_URL is blank.
+# "docker compose up --build" starts the full Phase 8 stack locally.
+# Uses SQLite (no PostgreSQL setup needed for development).
 
 services:
   # ── Backend (FastAPI) ───────────────────────────────────────────────────────
@@ -12,7 +11,7 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./data:/app/data          # SQLite DB + price cache persist across restarts
+      - ./data:/app/data
     environment:
       ENVIRONMENT: development
       APP_NAME: "Nifty Portfolio Optimizer"
@@ -23,6 +22,7 @@ services:
       DATABASE_URL: sqlite:///data/portfolio.db
       REDIS_URL: redis://redis:6379/0
       CORS_ORIGINS: '["http://localhost:3000","http://localhost:80","http://localhost"]'
+      SCHEDULER_ENABLED: "true"
     depends_on:
       redis:
         condition: service_healthy
@@ -34,13 +34,34 @@ services:
       start_period: 40s
       retries: 3
 
+  # ── RQ Worker (Phase 8 — async portfolio optimization) ──────────────────────
+  worker:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    # rq worker listens on the "optimize" queue; --with-scheduler handles APScheduler
+    command: ["python", "-m", "rq", "worker", "optimize", "--url", "redis://redis:6379/0"]
+    volumes:
+      - ./data:/app/data
+    environment:
+      DATABASE_URL: sqlite:///data/portfolio.db
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET_KEY: dev-secret-change-in-production
+      ENVIRONMENT: development
+    depends_on:
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
   # ── Frontend (React → Nginx) ────────────────────────────────────────────────
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        VITE_API_URL: ""           # empty → relative URLs → nginx proxies /api/*
+        VITE_API_URL: ""
     ports:
       - "3000:80"
     depends_on:
@@ -48,7 +69,7 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  # ── Redis (cache) ───────────────────────────────────────────────────────────
+  # ── Redis (cache + job queue) ───────────────────────────────────────────────
   redis:
     image: redis:7-alpine
     command: redis-server --save 60 1 --loglevel warning
@@ -63,18 +84,36 @@ services:
       timeout: 5s
       retries: 5
 
-  # ── Nginx reverse proxy (optional for local dev) ────────────────────────────
-  # Uncomment to test the production nginx config locally.
-  # nginx:
-  #   image: nginx:1.27-alpine
-  #   ports:
-  #     - "80:80"
-  #   volumes:
-  #     - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
-  #   depends_on:
-  #     - backend
-  #     - frontend
-  #   restart: unless-stopped
+  # ── Prometheus (Phase 8 — scrapes /metrics from backend) ────────────────────
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    command: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.retention.time=7d"]
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  # ── Grafana (Phase 8 — dashboard for Prometheus data) ───────────────────────
+  grafana:
+    image: grafana/grafana:10.2.3
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/provisioning/dashboards/api-overview.json
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus
+    restart: unless-stopped
 
 volumes:
   redis_data:
+  prometheus_data:
+  grafana_data:

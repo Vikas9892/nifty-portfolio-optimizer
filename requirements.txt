@@ -29,5 +29,20 @@ psycopg2-binary
 # Caching
 redis[hiredis]
 
+# Background jobs — Phase 8
+rq>=1.16
+
+# Task scheduling — Phase 8
+apscheduler>=3.10
+
+# Retry & resilience — Phase 8
+tenacity>=8.2
+
+# Observability — Phase 8
+prometheus-fastapi-instrumentator>=6.1
+
+# Load testing — Phase 8 (dev dependency)
+locust>=2.20
+
 # Streamlit UI (optional / legacy)
 streamlit

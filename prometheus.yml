@@ -1,0 +1,13 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    service: nifty-portfolio-optimizer
+
+scrape_configs:
+  - job_name: nifty-backend
+    static_configs:
+      - targets:
+          - backend:8000
+    metrics_path: /metrics
+    scrape_interval: 10s
