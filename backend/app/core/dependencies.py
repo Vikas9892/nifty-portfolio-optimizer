@@ -2,8 +2,8 @@ from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError
 
-from backend.app.models import database as db
 from backend.app.core.security import decode_access_token
+from backend.app.models import database as db
 from backend.app.schemas.auth import UserResponse
 from backend.app.utils.exceptions import AuthenticationError
 
@@ -17,8 +17,8 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> UserResponse:
         if payload.get("type") != "access":
             raise AuthenticationError("Invalid token type.")
         user_id: int = int(payload["sub"])
-    except (JWTError, KeyError, ValueError):
-        raise AuthenticationError("Token is invalid or has expired.")
+    except (JWTError, KeyError, ValueError) as exc:
+        raise AuthenticationError("Token is invalid or has expired.") from exc
 
     row = db.get_user_by_id(user_id)
     if not row:

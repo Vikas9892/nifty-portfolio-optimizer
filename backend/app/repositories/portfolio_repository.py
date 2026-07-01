@@ -1,6 +1,7 @@
 import json
 
 import src.database as _core_db
+
 from backend.app.models import database as db
 from backend.app.schemas.portfolio import DeleteResponse, PortfolioDetail, PortfolioListItem
 from backend.app.utils.exceptions import AuthorizationError, NotFoundError

@@ -16,8 +16,8 @@ class OptimizeRequest(BaseModel):
     def valid_date_format(cls, v: str) -> str:
         try:
             d = date.fromisoformat(v)
-        except ValueError:
-            raise ValueError(f"Invalid date '{v}'. Expected YYYY-MM-DD.")
+        except ValueError as exc:
+            raise ValueError(f"Invalid date '{v}'. Expected YYYY-MM-DD.") from exc
         if d > date.today():
             raise ValueError(f"Date '{v}' cannot be in the future.")
         return v

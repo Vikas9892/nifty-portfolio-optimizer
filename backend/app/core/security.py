@@ -1,12 +1,11 @@
 import hashlib
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import bcrypt
-from jose import JWTError, jwt
+from jose import jwt
 
 from backend.app.core.config import settings
-
 
 # ── Password (bcrypt directly — avoids passlib/bcrypt 4.x compat issues) ─────
 
@@ -21,7 +20,7 @@ def verify_password(plain: str, hashed: str) -> bool:
 # ── JWT ───────────────────────────────────────────────────────────────────────
 
 def create_access_token(user_id: int, email: str) -> str:
-    expire = datetime.now(timezone.utc) + timedelta(minutes=settings.access_token_expire_minutes)
+    expire = datetime.now(UTC) + timedelta(minutes=settings.access_token_expire_minutes)
     return jwt.encode(
         {"sub": str(user_id), "email": email, "exp": expire, "type": "access"},
         settings.jwt_secret_key,
@@ -48,4 +47,4 @@ def hash_token(raw: str) -> str:
 
 
 def refresh_token_expiry() -> datetime:
-    return datetime.now(timezone.utc) + timedelta(days=settings.refresh_token_expire_days)
+    return datetime.now(UTC) + timedelta(days=settings.refresh_token_expire_days)
