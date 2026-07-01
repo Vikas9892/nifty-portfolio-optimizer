@@ -5,3 +5,5 @@ streamlit
 yfinance
 pyportfolioopt
 seaborn
+fastapi
+uvicorn[standard]
