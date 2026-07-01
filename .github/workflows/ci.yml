@@ -155,8 +155,8 @@ jobs:
           ENVIRONMENT: test
         run: |
           python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 &
-          sleep 3
-          curl --fail http://localhost:8000/health
+          curl --fail --retry 15 --retry-delay 2 --retry-connrefused \
+               http://localhost:8000/health
           curl --fail http://localhost:8000/ready
 
   # ── Docker build validation ────────────────────────────────────────────────
