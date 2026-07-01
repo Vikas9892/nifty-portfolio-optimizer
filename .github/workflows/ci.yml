@@ -32,16 +32,13 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pytest pytest-cov httpx ruff black isort
+          pip install pytest pytest-cov httpx ruff black
 
-      - name: Lint with ruff
+      - name: Lint with ruff (includes import-order checks)
         run: python -m ruff check backend/app/
 
       - name: Check formatting with black
         run: python -m black --check backend/app/ backend/main.py
-
-      - name: Check imports with isort
-        run: python -m isort --check-only backend/app/ backend/main.py
 
       - name: Run backend tests with coverage
         env:

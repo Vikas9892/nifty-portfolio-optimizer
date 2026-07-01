@@ -93,7 +93,12 @@ jobs:
       - name: Deploy to Railway
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: railway up --service backend --detach
+        run: |
+          if [ -z "$RAILWAY_TOKEN" ]; then
+            echo "RAILWAY_TOKEN secret not configured — skipping deploy"
+            exit 0
+          fi
+          railway up --service backend --detach
 
   # ── Deploy frontend to Vercel ───────────────────────────────────────────────
   deploy-frontend:
@@ -118,10 +123,15 @@ jobs:
       - name: Deploy to Vercel (production)
         working-directory: frontend
         env:
-          VERCEL_TOKEN:   ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID:  ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_TOKEN:      ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID:     ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-        run: vercel --prod --token "$VERCEL_TOKEN"
+        run: |
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "VERCEL_TOKEN secret not configured — skipping deploy"
+            exit 0
+          fi
+          vercel --prod --token "$VERCEL_TOKEN"
 
   # ── Smoke test deployed endpoints ──────────────────────────────────────────
   smoke-test:
