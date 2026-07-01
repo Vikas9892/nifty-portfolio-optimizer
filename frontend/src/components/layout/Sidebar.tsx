@@ -1,5 +1,7 @@
-import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, TrendingUp, History, Settings } from 'lucide-react'
+import { LogOut, LayoutDashboard, TrendingUp, History, Settings } from 'lucide-react'
+import { NavLink, useNavigate } from 'react-router-dom'
+import toast from 'react-hot-toast'
+import { useAuth } from '../../hooks/useAuth'
 
 const NAV = [
   { to: '/',         label: 'Dashboard', icon: LayoutDashboard, exact: true },
@@ -12,6 +14,15 @@ const DISABLED = [
 ]
 
 export function Sidebar() {
+  const { user, logout } = useAuth()
+  const navigate = useNavigate()
+
+  const handleLogout = async () => {
+    await logout()
+    toast.success('Signed out.')
+    navigate('/login', { replace: true })
+  }
+
   return (
     <aside className="flex w-60 shrink-0 flex-col border-r border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
       {/* Logo */}
@@ -57,9 +68,27 @@ export function Sidebar() {
         </div>
       </nav>
 
-      {/* Footer */}
-      <div className="border-t border-gray-200 px-6 py-4 dark:border-gray-800">
-        <p className="text-xs text-gray-400">Nifty 50 · 50 stocks · 14 sectors</p>
+      {/* User footer */}
+      <div className="border-t border-gray-200 px-4 py-4 dark:border-gray-800">
+        {user ? (
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <p className="truncate text-xs font-medium text-gray-700 dark:text-gray-200">
+                {user.name}
+              </p>
+              <p className="truncate text-[10px] text-gray-400">{user.email}</p>
+            </div>
+            <button
+              onClick={handleLogout}
+              title="Sign out"
+              className="shrink-0 rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950 dark:hover:text-red-400"
+            >
+              <LogOut size={14} />
+            </button>
+          </div>
+        ) : (
+          <p className="text-xs text-gray-400">Nifty 50 · 50 stocks · 14 sectors</p>
+        )}
       </div>
     </aside>
   )

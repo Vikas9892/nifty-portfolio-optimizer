@@ -1,9 +1,26 @@
+# Core data / optimization
 numpy
 pandas
 matplotlib
-streamlit
 yfinance
 pyportfolioopt
 seaborn
+
+# Web framework
 fastapi
 uvicorn[standard]
+
+# Auth & security
+bcrypt
+python-jose[cryptography]==3.5.0
+
+# Configuration / validation
+pydantic-settings==2.14.2
+python-dotenv
+email-validator==2.3.0
+
+# Rate limiting
+slowapi==0.1.10
+
+# Streamlit UI (optional / legacy)
+streamlit
