@@ -90,13 +90,36 @@ app.include_router(stocks.router)
 app.include_router(benchmark.router)
 
 
-# ── Health check ──────────────────────────────────────────────────────────────
-@app.get("/", tags=["Health"], summary="Health check")
+# ── Observability endpoints ───────────────────────────────────────────────────
+
+@app.get("/", tags=["Health"], summary="Root / health check", include_in_schema=False)
+@app.get("/health", tags=["Health"], summary="Liveness probe")
 def health():
+    """Returns 200 as long as the process is alive."""
+    return {"status": "healthy", "service": settings.app_name, "version": "2.0.0"}
+
+
+@app.get("/ready", tags=["Health"], summary="Readiness probe")
+def ready():
+    """Returns 200 if the DB is reachable (used by container orchestrators)."""
+    try:
+        from backend.app.models.database import _connect
+        with _connect() as conn:
+            conn.execute("SELECT 1").fetchone()
+        return {"status": "ready", "db": "ok"}
+    except Exception as exc:
+        logger.error("READINESS_FAILED | %s", exc)
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={"status": "not ready", "db": "unreachable"},
+        )
+
+
+@app.get("/version", tags=["Health"], summary="Build version")
+def version():
+    """Returns the current API version and runtime environment."""
     return {
-        "success": True,
-        "message": "Nifty Portfolio Optimizer API",
         "version": "2.0.0",
         "environment": settings.environment,
-        "docs": "/docs",
+        "python": __import__("platform").python_version(),
     }

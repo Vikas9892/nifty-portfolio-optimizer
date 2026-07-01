@@ -1,0 +1,61 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.backends.legacy:build"
+
+# ── Pytest ────────────────────────────────────────────────────────────────────
+[tool.pytest.ini_options]
+pythonpath  = ["."]
+testpaths   = ["tests"]
+addopts     = "-v --tb=short --strict-markers -q"
+markers     = [
+    "unit: pure unit tests (no I/O)",
+    "integration: tests that hit a real (temp) DB or HTTP client",
+]
+
+# ── Coverage ──────────────────────────────────────────────────────────────────
+[tool.coverage.run]
+source   = ["backend/app", "src"]
+omit     = [
+    "tests/*",
+    "backend/app/routers/*",       # thin wiring — covered via integration tests
+]
+branch   = true
+
+[tool.coverage.report]
+show_missing = true
+fail_under   = 80
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]
+
+# ── Ruff (linter) ─────────────────────────────────────────────────────────────
+[tool.ruff]
+target-version = "py311"
+line-length    = 100
+src            = ["backend", "src"]
+exclude        = [".git", "__pycache__", "dist", ".venv", "tests"]
+
+[tool.ruff.lint]
+select  = ["E", "W", "F", "I", "B", "C4", "UP", "SIM"]
+ignore  = ["E501", "B008", "UP007"]    # long lines OK, Depends() OK, X | Y in older code
+
+# ── Black (formatter) ─────────────────────────────────────────────────────────
+[tool.black]
+line-length    = 100
+target-version = ["py311"]
+skip-string-normalization = false
+
+# ── isort ─────────────────────────────────────────────────────────────────────
+[tool.isort]
+profile         = "black"
+line_length     = 100
+known_first_party = ["backend", "src", "config"]
+
+# ── Mypy (type checker) ───────────────────────────────────────────────────────
+[tool.mypy]
+python_version      = "3.11"
+strict              = false
+ignore_missing_imports = true
+exclude             = ["tests/", "src/"]

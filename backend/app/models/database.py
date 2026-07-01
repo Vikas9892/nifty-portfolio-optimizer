@@ -8,8 +8,7 @@ Original prices / portfolios / portfolio_weights tables are managed by src.datab
 from __future__ import annotations
 
 import sqlite3
-from datetime import datetime, timezone
-from pathlib import Path
+from datetime import UTC, datetime
 
 import src.database as _core
 
@@ -64,7 +63,7 @@ def init_all_tables() -> None:
 # ── User CRUD ─────────────────────────────────────────────────────────────────
 
 def create_user(name: str, email: str, password_hash: str) -> dict:
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     with _connect() as conn:
         cur = conn.execute(
             "INSERT INTO users (name, email, password_hash, created_at, updated_at) VALUES (?,?,?,?,?)",
@@ -85,7 +84,7 @@ def get_user_by_id(user_id: int) -> dict | None:
     if not row:
         return None
     keys = ["id", "name", "email", "password_hash", "created_at", "updated_at", "is_active"]
-    return dict(zip(keys, row))
+    return dict(zip(keys, row, strict=True))
 
 
 def get_user_by_email(email: str) -> dict | None:
@@ -97,13 +96,13 @@ def get_user_by_email(email: str) -> dict | None:
     if not row:
         return None
     keys = ["id", "name", "email", "password_hash", "created_at", "updated_at", "is_active"]
-    return dict(zip(keys, row))
+    return dict(zip(keys, row, strict=True))
 
 
 # ── Refresh token CRUD ────────────────────────────────────────────────────────
 
 def save_refresh_token(user_id: int, token_hash: str, expires_at: datetime) -> None:
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     with _connect() as conn:
         conn.execute(
             "INSERT INTO refresh_tokens (user_id, token_hash, expires_at, created_at) VALUES (?,?,?,?)",
@@ -120,7 +119,7 @@ def get_refresh_token(token_hash: str) -> dict | None:
     if not row:
         return None
     keys = ["id", "user_id", "token_hash", "expires_at", "is_revoked"]
-    return dict(zip(keys, row))
+    return dict(zip(keys, row, strict=True))
 
 
 def revoke_refresh_token(token_hash: str) -> None:
@@ -136,7 +135,7 @@ def revoke_all_user_tokens(user_id: int) -> None:
 # ── Audit log ─────────────────────────────────────────────────────────────────
 
 def log_audit(user_id: int | None, action: str, details: str | None = None, ip: str | None = None) -> None:
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     with _connect() as conn:
         conn.execute(
             "INSERT INTO audit_logs (user_id, action, details, ip_address, created_at) VALUES (?,?,?,?,?)",
