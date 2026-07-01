@@ -1,13 +1,14 @@
 """
 Shared pytest fixtures.
 
-DB isolation strategy:
-- Every test gets a fresh SQLite file in pytest's tmp_path.
-- We monkeypatch src.database.DB_PATH (and its _connect function) so that
-  all code paths — including backend.app.models.database which delegates
-  to src.database._connect — automatically use the temp file.
+DB isolation strategy (Phase 7+):
+- Every test gets a fresh SQLite engine pointing at a temp file in pytest's tmp_path.
+- We monkeypatch backend.app.models.db._engine so that all code paths that call
+  get_engine() automatically use the isolated test database.
+- The SQLite price-cache path (src.database) is patched separately so that any
+  code path that calls get_prices() (always mocked at the service level) cannot
+  accidentally write to the real data/ directory.
 """
-
 from __future__ import annotations
 
 import sqlite3
@@ -15,26 +16,38 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
 
-import src.database as _core_db
-import backend.app.models.database as _ext_db
+import backend.app.models.db as _db_module
+import src.database as _src_db
 
 
 # ── Database isolation ────────────────────────────────────────────────────────
 
 @pytest.fixture()
 def tmp_db(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """Fresh SQLite file per test, with all tables already initialised."""
+    """Fresh SQLite engine per test, all tables initialised."""
     db_file = tmp_path / "test.db"
 
-    def _test_connect() -> sqlite3.Connection:
-        db_file.parent.mkdir(parents=True, exist_ok=True)
+    test_engine = create_engine(
+        f"sqlite:///{db_file}",
+        connect_args={"check_same_thread": False},
+    )
+    # FK enforcement is left OFF in tests — unit tests use fake user IDs without
+    # inserting real user rows. Production SQLite enables FK via the engine in db.py.
+
+    # Point the backend DB module at the test engine
+    monkeypatch.setattr(_db_module, "_engine", test_engine)
+
+    # Keep the legacy price-cache path isolated too
+    def _test_src_connect() -> sqlite3.Connection:
         return sqlite3.connect(str(db_file))
 
-    monkeypatch.setattr(_core_db, "DB_PATH", db_file)
-    monkeypatch.setattr(_core_db, "_connect", _test_connect)
-    # _ext_db._connect delegates to _core_db._connect, so patching _core is sufficient
-    _ext_db.init_all_tables()
+    monkeypatch.setattr(_src_db, "DB_PATH", db_file)
+    monkeypatch.setattr(_src_db, "_connect", _test_src_connect)
+
+    from backend.app.models.database import init_all_tables
+    init_all_tables()
     return db_file
 
 
@@ -44,7 +57,6 @@ def tmp_db(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 def client(tmp_db: Path) -> TestClient:
     """FastAPI TestClient wired to a fresh isolated database."""
     from backend.main import app
-    # Re-run lifespan so init_all_tables() runs against the patched DB
     with TestClient(app, raise_server_exceptions=True) as c:
         yield c
 

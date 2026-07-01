@@ -1,0 +1,80 @@
+# ── Development docker-compose ────────────────────────────────────────────────
+# "docker compose up --build" starts the full stack locally.
+# Uses SQLite (no PostgreSQL setup needed).
+# Redis is optional — the app falls back gracefully when REDIS_URL is blank.
+
+services:
+  # ── Backend (FastAPI) ───────────────────────────────────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data          # SQLite DB + price cache persist across restarts
+    environment:
+      ENVIRONMENT: development
+      APP_NAME: "Nifty Portfolio Optimizer"
+      JWT_SECRET_KEY: dev-secret-change-in-production
+      JWT_ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: "15"
+      REFRESH_TOKEN_EXPIRE_DAYS: "7"
+      DATABASE_URL: sqlite:///data/portfolio.db
+      REDIS_URL: redis://redis:6379/0
+      CORS_ORIGINS: '["http://localhost:3000","http://localhost:80","http://localhost"]'
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 40s
+      retries: 3
+
+  # ── Frontend (React → Nginx) ────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ""           # empty → relative URLs → nginx proxies /api/*
+    ports:
+      - "3000:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── Redis (cache) ───────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Nginx reverse proxy (optional for local dev) ────────────────────────────
+  # Uncomment to test the production nginx config locally.
+  # nginx:
+  #   image: nginx:1.27-alpine
+  #   ports:
+  #     - "80:80"
+  #   volumes:
+  #     - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+  #   depends_on:
+  #     - backend
+  #     - frontend
+  #   restart: unless-stopped
+
+volumes:
+  redis_data:

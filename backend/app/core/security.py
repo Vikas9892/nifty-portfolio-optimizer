@@ -9,6 +9,7 @@ from backend.app.core.config import settings
 
 # ── Password (bcrypt directly — avoids passlib/bcrypt 4.x compat issues) ─────
 
+
 def hash_password(plain: str) -> str:
     return bcrypt.hashpw(plain.encode(), bcrypt.gensalt()).decode()
 
@@ -18,6 +19,7 @@ def verify_password(plain: str, hashed: str) -> bool:
 
 
 # ── JWT ───────────────────────────────────────────────────────────────────────
+
 
 def create_access_token(user_id: int, email: str) -> str:
     expire = datetime.now(UTC) + timedelta(minutes=settings.access_token_expire_minutes)
@@ -40,6 +42,7 @@ def decode_access_token(token: str) -> dict:
 
 
 # ── Refresh token helpers ────────────────────────────────────────────────────
+
 
 def hash_token(raw: str) -> str:
     """SHA-256 hash of a refresh token for safe DB storage."""

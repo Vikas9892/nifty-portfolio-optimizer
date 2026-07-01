@@ -7,15 +7,16 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from slowapi.util import get_remote_address
+from sqlalchemy import text
 
 from backend.app.core.config import settings
 from backend.app.middleware.logging_middleware import RequestLoggingMiddleware
 from backend.app.models.database import init_all_tables
+from backend.app.models.db import get_engine
 from backend.app.routers import auth, benchmark, portfolio, stocks
 from backend.app.schemas.response import ErrorResponse
 from backend.app.utils.exceptions import AppException
 from backend.app.utils.logger import logger
-
 
 # ── Rate limiter (shared across routers) ─────────────────────────────────────
 limiter = Limiter(key_func=get_remote_address, default_limits=["200/minute"])
@@ -48,7 +49,7 @@ app = FastAPI(
 # ── Middleware (applied bottom-up — last added = outermost) ───────────────────
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173"],
+    allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -63,8 +64,13 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 @app.exception_handler(AppException)
 async def app_exception_handler(request: Request, exc: AppException) -> JSONResponse:
-    logger.warning("APP_ERROR | %s %s → %s: %s",
-                   request.method, request.url.path, exc.error_code, exc.message)
+    logger.warning(
+        "APP_ERROR | %s %s → %s: %s",
+        request.method,
+        request.url.path,
+        exc.error_code,
+        exc.message,
+    )
     return JSONResponse(
         status_code=exc.status_code,
         content=ErrorResponse(message=exc.message, error_code=exc.error_code).model_dump(),
@@ -73,7 +79,13 @@ async def app_exception_handler(request: Request, exc: AppException) -> JSONResp
 
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-    logger.error("UNHANDLED_ERROR | %s %s → %s", request.method, request.url.path, exc, exc_info=True)
+    logger.error(
+        "UNHANDLED_ERROR | %s %s → %s",
+        request.method,
+        request.url.path,
+        exc,
+        exc_info=True,
+    )
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content=ErrorResponse(
@@ -92,7 +104,8 @@ app.include_router(benchmark.router)
 
 # ── Observability endpoints ───────────────────────────────────────────────────
 
-@app.get("/", tags=["Health"], summary="Root / health check", include_in_schema=False)
+
+@app.get("/", tags=["Health"], summary="Root", include_in_schema=False)
 @app.get("/health", tags=["Health"], summary="Liveness probe")
 def health():
     """Returns 200 as long as the process is alive."""
@@ -103,9 +116,8 @@ def health():
 def ready():
     """Returns 200 if the DB is reachable (used by container orchestrators)."""
     try:
-        from backend.app.models.database import _connect
-        with _connect() as conn:
-            conn.execute("SELECT 1").fetchone()
+        with get_engine().connect() as conn:
+            conn.execute(text("SELECT 1"))
         return {"status": "ready", "db": "ok"}
     except Exception as exc:
         logger.error("READINESS_FAILED | %s", exc)

@@ -1,0 +1,80 @@
+# ── Production docker-compose override ───────────────────────────────────────
+# Usage: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# OR:    make prod
+#
+# What this adds on top of docker-compose.yml:
+#   • PostgreSQL replaces SQLite
+#   • Nginx sits in front of everything
+#   • Secrets come from environment variables / .env.production (never committed)
+#   • No host-exposed ports except 80/443 (all traffic via nginx)
+
+services:
+  # ── PostgreSQL ──────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: nifty_optimizer
+      POSTGRES_USER: ${POSTGRES_USER:-nifty}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-nifty}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # Not exposed externally — backend reaches it via the internal network
+
+  # ── Backend overrides ───────────────────────────────────────────────────────
+  backend:
+    ports: []                      # Remove the host-exposed 8000 port
+    environment:
+      ENVIRONMENT: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-nifty}:${POSTGRES_PASSWORD}@postgres:5432/nifty_optimizer
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?JWT_SECRET_KEY must be set}
+      CORS_ORIGINS: ${CORS_ORIGINS:-'["https://portfolio.vikastiwari.dev"]'}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    deploy:
+      replicas: 2                  # Two backend workers behind nginx
+
+  # ── Frontend overrides ──────────────────────────────────────────────────────
+  frontend:
+    ports: []                      # Traffic comes via nginx only
+
+  # ── Nginx (production entry point) ─────────────────────────────────────────
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.ssl.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/certbot/www:/var/www/certbot:ro
+      - ./nginx/certbot/conf:/etc/letsencrypt:ro
+    depends_on:
+      - backend
+      - frontend
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ── Certbot (Let's Encrypt renewal) ────────────────────────────────────────
+  certbot:
+    image: certbot/certbot:latest
+    volumes:
+      - ./nginx/certbot/www:/var/www/certbot:rw
+      - ./nginx/certbot/conf:/etc/letsencrypt:rw
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done'"
+    restart: unless-stopped
+
+volumes:
+  pg_data:
