@@ -43,8 +43,11 @@ class AuthService:
         if not row["is_active"]:
             raise AuthenticationError("Account is deactivated.")
         user = UserResponse(
-            id=row["id"], name=row["name"], email=row["email"],
-            created_at=row["created_at"], is_active=bool(row["is_active"]),
+            id=row["id"],
+            name=row["name"],
+            email=row["email"],
+            created_at=row["created_at"],
+            is_active=bool(row["is_active"]),
         )
         logger.info("LOGIN_SUCCESS | user_id=%s", user.id)
         self._audit.log(user.id, "LOGIN_SUCCESS", ip=ip)
@@ -52,15 +55,19 @@ class AuthService:
 
     def refresh(self, req: RefreshRequest) -> TokenResponse:
         token_hash = hash_token(req.refresh_token)
-        row = self._tokens.validate(token_hash)     # raises if invalid
-        self._tokens.revoke(token_hash)             # rotate: one-time use
+        row = self._tokens.validate(token_hash)  # raises if invalid
+        self._tokens.revoke(token_hash)  # rotate: one-time use
         from backend.app.models import database as db
+
         user_row = db.get_user_by_id(row["user_id"])
         if not user_row or not user_row["is_active"]:
             raise AuthenticationError("User account is not accessible.")
         user = UserResponse(
-            id=user_row["id"], name=user_row["name"], email=user_row["email"],
-            created_at=user_row["created_at"], is_active=bool(user_row["is_active"]),
+            id=user_row["id"],
+            name=user_row["name"],
+            email=user_row["email"],
+            created_at=user_row["created_at"],
+            is_active=bool(user_row["is_active"]),
         )
         logger.info("TOKEN_REFRESHED | user_id=%s", user.id)
         return self._build_token_response(user)

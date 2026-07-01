@@ -1,0 +1,33 @@
+# Render deployment — alternative to Railway
+# Docs: https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: nifty-optimizer-api
+    runtime: docker
+    dockerfilePath: backend/Dockerfile
+    plan: starter
+    region: singapore
+    branch: main
+    healthCheckPath: /health
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: JWT_SECRET_KEY
+        sync: false          # Set in Render dashboard
+      - key: DATABASE_URL
+        fromDatabase:
+          name: nifty-postgres
+          property: connectionString
+      - key: REDIS_URL
+        sync: false          # Set from Upstash
+      - key: CORS_ORIGINS
+        value: '["https://nifty-optimizer.onrender.com","https://nifty-optimizer.vercel.app"]'
+      - key: WORKERS
+        value: "2"
+
+databases:
+  - name: nifty-postgres
+    databaseName: nifty_optimizer
+    plan: starter
+    region: singapore

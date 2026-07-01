@@ -22,5 +22,12 @@ email-validator==2.3.0
 # Rate limiting
 slowapi==0.1.10
 
+# Database — SQLite (dev) + PostgreSQL (prod)
+sqlalchemy>=2.0
+psycopg2-binary
+
+# Caching
+redis[hiredis]
+
 # Streamlit UI (optional / legacy)
 streamlit
