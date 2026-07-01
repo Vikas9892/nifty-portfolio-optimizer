@@ -153,3 +153,24 @@ def load_portfolio_weights(portfolio_id: int) -> dict[str, float]:
             (portfolio_id,),
         ).fetchall()
     return dict(rows)
+
+
+def load_portfolio_by_id(portfolio_id: int) -> dict | None:
+    """Return a single portfolio row as a dict, or None if not found."""
+    cols = ["id", "created_at", "tickers", "start_date", "end_date",
+            "expected_return", "volatility", "sharpe",
+            "basket_return", "nifty_return", "max_weight", "num_portfolios"]
+    with _connect() as conn:
+        row = conn.execute(
+            f"SELECT {', '.join(cols)} FROM portfolios WHERE id = ?",
+            (portfolio_id,),
+        ).fetchone()
+    return dict(zip(cols, row)) if row else None
+
+
+def delete_portfolio(portfolio_id: int) -> bool:
+    """Delete a portfolio and its weights. Returns True if the row existed."""
+    with _connect() as conn:
+        conn.execute("DELETE FROM portfolio_weights WHERE portfolio_id = ?", (portfolio_id,))
+        cur = conn.execute("DELETE FROM portfolios WHERE id = ?", (portfolio_id,))
+        return cur.rowcount > 0
