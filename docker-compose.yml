@@ -84,7 +84,7 @@ services:
       timeout: 5s
       retries: 5
 
-  # ── Prometheus (Phase 8 — scrapes /metrics from backend) ────────────────────
+  # ── Prometheus (Phase 8 — scrapes /metrics; Phase 9 — alert rules) ──────────
   prometheus:
     image: prom/prometheus:v2.48.0
     command: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.retention.time=7d"]
@@ -92,9 +92,22 @@ services:
       - "9090:9090"
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./alertmanager/alerting_rules.yml:/etc/prometheus/alerting_rules.yml:ro
       - prometheus_data:/prometheus
     depends_on:
       - backend
+    restart: unless-stopped
+
+  # ── Alertmanager (Phase 9 — routes alerts to Email / Slack) ─────────────────
+  alertmanager:
+    image: prom/alertmanager:v0.26.0
+    command: ["--config.file=/etc/alertmanager/alertmanager.yml"]
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    depends_on:
+      - prometheus
     restart: unless-stopped
 
   # ── Grafana (Phase 8 — dashboard for Prometheus data) ───────────────────────

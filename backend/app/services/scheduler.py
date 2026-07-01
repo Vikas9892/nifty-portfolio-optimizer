@@ -1,4 +1,4 @@
-"""APScheduler integration — market data refresh and housekeeping."""
+"""APScheduler integration — market data refresh with distributed locking (M5)."""
 
 from __future__ import annotations
 
@@ -10,8 +10,25 @@ _scheduler: AsyncIOScheduler | None = None
 
 
 async def _refresh_market_data() -> None:
-    """Proactively pull latest close prices for Nifty 50 top holdings after market close."""
-    # NSE closes at 15:30 IST (10:00 UTC); data is typically available by 13:30 UTC.
+    """
+    Pull latest close prices for Nifty 50 top holdings after market close.
+
+    M5: acquires a distributed Redis lock so that only one replica refreshes
+    market data at a time when multiple FastAPI instances are running.
+    NSE closes at 15:30 IST; data is typically available by 13:30 UTC.
+    """
+    from backend.app.services.distributed_lock import acquire_lock
+
+    # Lock TTL = 600s — comfortably covers the full refresh window
+    with acquire_lock("market-refresh", ttl=600) as acquired:
+        if not acquired:
+            logger.info("SCHEDULER | skipped — another replica holds the market-refresh lock")
+            return
+
+        await _do_refresh()
+
+
+async def _do_refresh() -> None:
     DEFAULT_TICKERS = [
         "RELIANCE.NS",
         "TCS.NS",
@@ -37,7 +54,6 @@ async def _refresh_market_data() -> None:
             len(prices.columns),
             len(prices),
         )
-        # Invalidate Redis cache for stocks universe so next request gets fresh data
         from backend.app.services.cache_service import cache
 
         cache.delete("stocks:universe")
@@ -49,7 +65,6 @@ def start_scheduler(hour: int = 13, minute: int = 30) -> AsyncIOScheduler:
     global _scheduler
     _scheduler = AsyncIOScheduler(timezone="UTC")
 
-    # Weekdays at NSE market close + data availability window
     _scheduler.add_job(
         _refresh_market_data,
         "cron",

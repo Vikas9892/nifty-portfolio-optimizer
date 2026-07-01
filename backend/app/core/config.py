@@ -65,6 +65,15 @@ class Settings(BaseSettings):
     rate_limit_optimize_user: int = 10
     rate_limit_optimize_premium: int = 100
 
+    # ── Phase 9: Logging ──────────────────────────────────────────────────────
+    log_format: str = "text"  # "text" | "json" (override with LOG_FORMAT=json)
+
+    # ── Phase 9: Dead Letter Queue ────────────────────────────────────────────
+    dlq_max_retries: int = 3  # failures before job is moved to DLQ
+
+    # ── Phase 9: Distributed lock ─────────────────────────────────────────────
+    scheduler_lock_ttl: int = 600  # seconds; covers the full market-refresh window
+
     @property
     def is_production(self) -> bool:
         return self.environment == "production"

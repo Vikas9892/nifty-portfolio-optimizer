@@ -14,7 +14,7 @@ from backend.app.middleware.logging_middleware import RequestLoggingMiddleware
 from backend.app.middleware.request_id_middleware import RequestIDMiddleware
 from backend.app.models.database import init_all_tables
 from backend.app.models.db import get_engine
-from backend.app.routers import admin, auth, benchmark, jobs, portfolio, stocks
+from backend.app.routers import admin, auth, benchmark, jobs, portfolio, sre, stocks
 from backend.app.schemas.response import ErrorResponse
 from backend.app.utils.exceptions import AppException
 from backend.app.utils.logger import logger
@@ -54,7 +54,7 @@ async def lifespan(app: FastAPI):
         except Exception as exc:
             logger.warning("STARTUP | Scheduler not started: %s", exc)
 
-    logger.info("STARTUP | %s v3.0.0 ready (%s)", settings.app_name, settings.environment)
+    logger.info("STARTUP | %s v4.0.0 ready (%s)", settings.app_name, settings.environment)
     yield
 
     # Shutdown
@@ -74,9 +74,10 @@ app = FastAPI(
         "`Authorization: Bearer <token>` header on every protected endpoint.\n\n"
         "**Versioning:** All endpoints are under `/api/v1/`.\n\n"
         "**Async jobs:** POST `/api/v1/jobs/optimize` → returns `job_id` → "
-        "poll `GET /api/v1/jobs/{job_id}` for result."
+        "poll `GET /api/v1/jobs/{job_id}` for result.\n\n"
+        "**SRE:** Feature flags, circuit breaker states, and DLQ management under `/api/v1/sre/`."
     ),
-    version="3.0.0",
+    version="4.0.0",
     lifespan=lifespan,
     docs_url="/docs",
     redoc_url="/redoc",
@@ -143,6 +144,7 @@ app.include_router(stocks.router)
 app.include_router(benchmark.router)
 app.include_router(jobs.router)  # Phase 8: async job endpoints
 app.include_router(admin.router)  # Phase 8: metrics dashboard
+app.include_router(sre.router)  # Phase 9: circuit breakers / feature flags / DLQ
 
 
 # ── Observability endpoints ───────────────────────────────────────────────────
@@ -152,7 +154,7 @@ app.include_router(admin.router)  # Phase 8: metrics dashboard
 @app.get("/health", tags=["Health"], summary="Liveness probe")
 def health():
     """Returns 200 as long as the process is alive."""
-    return {"status": "healthy", "service": settings.app_name, "version": "3.0.0"}
+    return {"status": "healthy", "service": settings.app_name, "version": "4.0.0"}
 
 
 @app.get("/ready", tags=["Health"], summary="Readiness probe")
@@ -174,7 +176,7 @@ def ready():
 def version():
     """Returns the current API version and runtime environment."""
     return {
-        "version": "3.0.0",
+        "version": "4.0.0",
         "environment": settings.environment,
         "python": __import__("platform").python_version(),
         "features": ["async-jobs", "prometheus", "scheduler", "circuit-breaker", "retry"],

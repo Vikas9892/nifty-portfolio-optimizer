@@ -101,7 +101,33 @@ class CircuitBreaker:
 
         return result
 
+    def as_dict(self) -> dict:
+        """Snapshot of current breaker state for the SRE dashboard."""
+        return {
+            "name": self.name,
+            "state": self._state,
+            "failures": self._failures,
+            "fail_max": self.fail_max,
+            "reset_timeout_seconds": self.reset_timeout,
+            "opened_at": self._opened_at,
+        }
+
+
+# ── Circuit breaker registry (M2: expose state via API) ───────────────────────
+
+_REGISTRY: dict[str, CircuitBreaker] = {}
+
+
+def register_breaker(breaker: CircuitBreaker) -> CircuitBreaker:
+    """Register a breaker so its state appears in GET /api/v1/sre/circuit-breakers."""
+    _REGISTRY[breaker.name] = breaker
+    return breaker
+
+
+def get_all_breaker_states() -> list[dict]:
+    return [cb.as_dict() for cb in _REGISTRY.values()]
+
 
 # ── Singletons ─────────────────────────────────────────────────────────────────
 
-yahoo_breaker = CircuitBreaker(name="yahoo-finance", fail_max=5, reset_timeout=60)
+yahoo_breaker = register_breaker(CircuitBreaker(name="yahoo-finance", fail_max=5, reset_timeout=60))
