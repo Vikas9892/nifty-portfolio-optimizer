@@ -1,4 +1,5 @@
 """In-process metrics collection backed by Redis (no-op when Redis is absent)."""
+
 from __future__ import annotations
 
 import time

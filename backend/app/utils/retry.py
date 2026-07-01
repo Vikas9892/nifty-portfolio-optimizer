@@ -1,9 +1,10 @@
 """Retry and circuit-breaker utilities for external service calls (Yahoo Finance, etc.)."""
+
 from __future__ import annotations
 
 import time
 from collections.abc import Callable
-from enum import Enum
+from enum import StrEnum
 from threading import Lock
 from typing import Any
 
@@ -15,7 +16,6 @@ from tenacity import (
 )
 
 from backend.app.utils.logger import logger
-
 
 # ── Tenacity retry decorator ──────────────────────────────────────────────────
 
@@ -33,10 +33,10 @@ def with_retry(attempts: int = 3, wait_min: float = 1.0, wait_max: float = 10.0)
 # ── Circuit breaker ────────────────────────────────────────────────────────────
 
 
-class CircuitState(str, Enum):
-    CLOSED = "closed"       # Normal — calls pass through
-    OPEN = "open"           # Tripped — calls rejected immediately
-    HALF_OPEN = "half_open" # Probing — one call allowed to test recovery
+class CircuitState(StrEnum):
+    CLOSED = "closed"  # Normal — calls pass through
+    OPEN = "open"  # Tripped — calls rejected immediately
+    HALF_OPEN = "half_open"  # Probing — one call allowed to test recovery
 
 
 class CircuitBreaker:

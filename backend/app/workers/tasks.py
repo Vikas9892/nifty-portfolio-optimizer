@@ -1,4 +1,5 @@
 """Background task implementations — run by FastAPI BackgroundTasks (dev) or RQ worker (prod)."""
+
 from __future__ import annotations
 
 import time

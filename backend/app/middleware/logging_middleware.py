@@ -1,4 +1,5 @@
 """Structured request/response logging with request-ID tracing."""
+
 from __future__ import annotations
 
 import time
