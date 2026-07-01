@@ -20,6 +20,10 @@ export function Dashboard() {
     portfolioService
       .getHistory()
       .then((h) => setRecent(h.slice(0, 5)))
+      .catch(() => {
+        /* API errors (network, 5xx) are surfaced via toast in the interceptor;
+           we silently fall back to an empty recent list here. */
+      })
       .finally(() => setLoadingRecent(false))
   }, [])
 

@@ -19,15 +19,30 @@ interface TooltipPayload {
   payload: { x: number; y: number; z: number; sharpe: number; name: string }
 }
 
-function CustomTooltip({ active, payload }: { active?: boolean; payload?: TooltipPayload[] }) {
+function CustomTooltip({
+  active,
+  payload,
+  isDark,
+}: {
+  active?: boolean
+  payload?: TooltipPayload[]
+  isDark?: boolean
+}) {
   if (!active || !payload?.length) return null
   const { x, y, sharpe, name } = payload[0].payload
   return (
-    <div className="rounded-lg border border-gray-700 bg-gray-900 p-3 text-xs text-gray-200 shadow-lg">
+    <div
+      style={{
+        backgroundColor: isDark ? '#111827' : '#ffffff',
+        border: `1px solid ${isDark ? '#1f2937' : '#e5e7eb'}`,
+        color: isDark ? '#f9fafb' : '#111827',
+      }}
+      className="rounded-lg p-3 text-xs shadow-lg"
+    >
       <p className="mb-1 font-semibold">{name}</p>
-      <p>Return: <span className="text-emerald-400">{y.toFixed(2)}%</span></p>
-      <p>Volatility: <span className="text-yellow-400">{x.toFixed(2)}%</span></p>
-      <p>Sharpe: <span className="text-blue-400">{sharpe.toFixed(2)}</span></p>
+      <p>Return: <span className="text-emerald-500">{y.toFixed(2)}%</span></p>
+      <p>Volatility: <span className="text-yellow-500">{x.toFixed(2)}%</span></p>
+      <p>Sharpe: <span className="text-blue-500">{sharpe.toFixed(2)}</span></p>
     </div>
   )
 }
@@ -70,7 +85,7 @@ export function HistoryScatterChart({ portfolios }: HistoryScatterChartProps) {
           tickLine={false}
         />
         <ZAxis dataKey="z" range={[60, 220]} name="Sharpe" />
-        <Tooltip content={<CustomTooltip />} />
+        <Tooltip content={<CustomTooltip isDark={isDark} />} />
         <Scatter data={data} fill="#3b82f6" fillOpacity={0.75} />
       </ScatterChart>
     </ResponsiveContainer>

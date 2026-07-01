@@ -45,7 +45,9 @@ class PortfolioRepository:
         if not row:
             raise NotFoundError("Portfolio")
         owner = db.get_portfolio_owner(portfolio_id)
-        if owner is not None and owner != user_id:
+        # owner is None means the row exists but has no user_id (legacy/orphan).
+        # Either way, only the owning user may access it.
+        if owner != user_id:
             raise AuthorizationError("You don't own this portfolio.")
         weights = _core_db.load_portfolio_weights(portfolio_id)
         return PortfolioDetail(
@@ -65,9 +67,10 @@ class PortfolioRepository:
         )
 
     def delete(self, portfolio_id: int, user_id: int) -> DeleteResponse:
-        owner = db.get_portfolio_owner(portfolio_id)
-        if owner is None:
+        row = _core_db.load_portfolio_by_id(portfolio_id)
+        if not row:
             raise NotFoundError("Portfolio")
+        owner = db.get_portfolio_owner(portfolio_id)
         if owner != user_id:
             raise AuthorizationError("You don't own this portfolio.")
         _core_db.delete_portfolio(portfolio_id)
