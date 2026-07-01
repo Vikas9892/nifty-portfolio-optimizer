@@ -1,4 +1,5 @@
 """Async portfolio optimization — submit a job, poll for result."""
+
 from __future__ import annotations
 
 from typing import Annotated

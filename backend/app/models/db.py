@@ -5,6 +5,7 @@ Returns a single shared engine per process lifetime.
 Supports SQLite (development/testing) and PostgreSQL (production).
 Tests override `_engine` via monkeypatch before calling init_all_tables().
 """
+
 from __future__ import annotations
 
 from sqlalchemy import create_engine, event
@@ -42,7 +43,7 @@ def get_engine() -> Engine:
             url,
             pool_size=settings.db_pool_size,
             max_overflow=settings.db_max_overflow,
-            pool_pre_ping=True,   # discard stale connections transparently
+            pool_pre_ping=True,  # discard stale connections transparently
             echo=False,
         )
 
@@ -50,6 +51,7 @@ def get_engine() -> Engine:
         @event.listens_for(engine, "checkout")
         def _on_checkout(dbapi_conn, connection_record, connection_proxy):
             from backend.app.services.metrics_service import metrics
+
             metrics.increment("db:pool:checkouts")
 
     _engine = engine

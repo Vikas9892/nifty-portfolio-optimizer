@@ -1,4 +1,5 @@
 """APScheduler integration — market data refresh and housekeeping."""
+
 from __future__ import annotations
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -12,11 +13,20 @@ async def _refresh_market_data() -> None:
     """Proactively pull latest close prices for Nifty 50 top holdings after market close."""
     # NSE closes at 15:30 IST (10:00 UTC); data is typically available by 13:30 UTC.
     DEFAULT_TICKERS = [
-        "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "INFY.NS", "ICICIBANK.NS",
-        "HINDUNILVR.NS", "KOTAKBANK.NS", "BHARTIARTL.NS", "ITC.NS", "AXISBANK.NS",
+        "RELIANCE.NS",
+        "TCS.NS",
+        "HDFCBANK.NS",
+        "INFY.NS",
+        "ICICIBANK.NS",
+        "HINDUNILVR.NS",
+        "KOTAKBANK.NS",
+        "BHARTIARTL.NS",
+        "ITC.NS",
+        "AXISBANK.NS",
     ]
     try:
         import datetime
+
         from src.data_service import get_prices
 
         end = datetime.date.today().isoformat()
@@ -29,6 +39,7 @@ async def _refresh_market_data() -> None:
         )
         # Invalidate Redis cache for stocks universe so next request gets fresh data
         from backend.app.services.cache_service import cache
+
         cache.delete("stocks:universe")
     except Exception as exc:
         logger.error("SCHEDULER | market_refresh failed: %s", exc, exc_info=True)
@@ -50,9 +61,7 @@ def start_scheduler(hour: int = 13, minute: int = 30) -> AsyncIOScheduler:
         misfire_grace_time=3600,
     )
     _scheduler.start()
-    logger.info(
-        "SCHEDULER | started — market refresh weekdays at %02d:%02d UTC", hour, minute
-    )
+    logger.info("SCHEDULER | started — market refresh weekdays at %02d:%02d UTC", hour, minute)
     return _scheduler
 
 

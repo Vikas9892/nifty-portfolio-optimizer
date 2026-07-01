@@ -31,6 +31,7 @@ async def lifespan(app: FastAPI):
     # Phase 8: Prometheus instrumentation
     try:
         from prometheus_fastapi_instrumentator import Instrumentator
+
         Instrumentator(
             should_group_status_codes=True,
             should_ignore_untemplated=True,
@@ -45,6 +46,7 @@ async def lifespan(app: FastAPI):
     if settings.scheduler_enabled:
         try:
             from backend.app.services.scheduler import start_scheduler
+
             scheduler = start_scheduler(
                 hour=settings.market_refresh_hour,
                 minute=settings.market_refresh_minute,
@@ -58,6 +60,7 @@ async def lifespan(app: FastAPI):
     # Shutdown
     if scheduler:
         from backend.app.services.scheduler import stop_scheduler
+
         stop_scheduler()
     logger.info("SHUTDOWN | Goodbye.")
 
@@ -88,7 +91,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.add_middleware(RequestLoggingMiddleware)
-app.add_middleware(RequestIDMiddleware)   # innermost — sets request_id first
+app.add_middleware(RequestIDMiddleware)  # innermost — sets request_id first
 app.state.limiter = limiter
 app.add_middleware(SlowAPIMiddleware)
 
@@ -138,8 +141,8 @@ app.include_router(auth.router)
 app.include_router(portfolio.router)
 app.include_router(stocks.router)
 app.include_router(benchmark.router)
-app.include_router(jobs.router)    # Phase 8: async job endpoints
-app.include_router(admin.router)   # Phase 8: metrics dashboard
+app.include_router(jobs.router)  # Phase 8: async job endpoints
+app.include_router(admin.router)  # Phase 8: metrics dashboard
 
 
 # ── Observability endpoints ───────────────────────────────────────────────────

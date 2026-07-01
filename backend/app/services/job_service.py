@@ -1,4 +1,5 @@
 """Job lifecycle management backed by Redis (falls back to no-op when Redis is absent)."""
+
 from __future__ import annotations
 
 import uuid
@@ -69,27 +70,38 @@ class JobService:
             cache.set(self._key(job_id), job, ttl=_JOB_TTL)
 
     def mark_running(self, job_id: str) -> None:
-        self._update(job_id, {
-            "status": JobStatus.RUNNING,
-            "started_at": datetime.now(UTC).isoformat(),
-        })
+        self._update(
+            job_id,
+            {
+                "status": JobStatus.RUNNING,
+                "started_at": datetime.now(UTC).isoformat(),
+            },
+        )
         logger.info("JOB | running job_id=%s", job_id)
 
     def mark_completed(self, job_id: str, result: dict) -> None:
-        self._update(job_id, {
-            "status": JobStatus.COMPLETED,
-            "completed_at": datetime.now(UTC).isoformat(),
-            "result": result,
-        })
+        self._update(
+            job_id,
+            {
+                "status": JobStatus.COMPLETED,
+                "completed_at": datetime.now(UTC).isoformat(),
+                "result": result,
+            },
+        )
         from backend.app.services.metrics_service import metrics
+
         metrics.increment("jobs:completed")
 
     def mark_failed(self, job_id: str, error: str) -> None:
-        self._update(job_id, {
-            "status": JobStatus.FAILED,
-            "completed_at": datetime.now(UTC).isoformat(),
-            "error": error,
-        })
+        self._update(
+            job_id,
+            {
+                "status": JobStatus.FAILED,
+                "completed_at": datetime.now(UTC).isoformat(),
+                "error": error,
+            },
+        )
         from backend.app.services.metrics_service import metrics
+
         metrics.increment("jobs:failed")
         logger.error("JOB | failed job_id=%s error=%s", job_id, error)

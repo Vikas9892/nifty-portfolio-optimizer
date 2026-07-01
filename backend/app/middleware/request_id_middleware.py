@@ -1,4 +1,5 @@
 """Inject X-Request-ID into every request for end-to-end traceability."""
+
 from __future__ import annotations
 
 import uuid
