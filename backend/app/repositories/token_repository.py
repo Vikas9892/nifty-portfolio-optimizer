@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from backend.app.models import database as db
 from backend.app.utils.exceptions import AuthenticationError
@@ -15,7 +15,7 @@ class TokenRepository:
             raise AuthenticationError("Refresh token is invalid.")
         if row["is_revoked"]:
             raise AuthenticationError("Refresh token has been revoked.")
-        if datetime.fromisoformat(row["expires_at"]) < datetime.now(timezone.utc):
+        if datetime.fromisoformat(row["expires_at"]) < datetime.now(UTC):
             raise AuthenticationError("Refresh token has expired.")
         return row
 

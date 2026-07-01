@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -8,7 +8,10 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 class OptimizeRequest(BaseModel):
     stocks: list[str] = Field(..., min_length=2, description="NSE ticker symbols e.g. ['TCS.NS', 'INFY.NS']")
     start: str = Field(default="2020-01-01", description="Start date (YYYY-MM-DD)")
-    end: str = Field(default="2025-01-01", description="End date (YYYY-MM-DD)")
+    end: str = Field(
+        default_factory=lambda: (date.today() - timedelta(days=1)).isoformat(),
+        description="End date (YYYY-MM-DD) — defaults to yesterday",
+    )
     max_weight: float = Field(default=0.30, ge=0.10, le=0.50, description="Max allocation per stock (0.10–0.50)")
 
     @field_validator("start", "end")

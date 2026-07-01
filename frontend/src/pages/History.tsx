@@ -25,6 +25,9 @@ export function History() {
       try {
         const d = await portfolioService.getById(id)
         setDetailCache((prev) => ({ ...prev, [id]: d }))
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Failed to load portfolio details')
+        setExpanded(null)
       } finally {
         setLoadingDetail(null)
       }

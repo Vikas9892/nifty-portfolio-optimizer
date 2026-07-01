@@ -1,10 +1,10 @@
+from config import NIFTY_50, NIFTY_50_STOCKS
 from fastapi import APIRouter, Depends
 
 from backend.app.core.dependencies import get_current_user
 from backend.app.schemas.auth import UserResponse
 from backend.app.schemas.response import SuccessResponse
 from backend.app.schemas.stocks import StockUniverseResponse
-from config import NIFTY_50, NIFTY_50_STOCKS
 
 router = APIRouter(prefix="/api/v1/stocks", tags=["Stocks"])
 

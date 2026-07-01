@@ -1,3 +1,4 @@
+
 # Nifty Portfolio Optimizer
 
 A mean-variance portfolio optimizer built on the full **Nifty 50 universe**. Given a user-defined basket of Indian large-cap stocks, it computes the weight allocation that maximizes the Sharpe ratio subject to position-size constraints, validates the result against a Monte Carlo frontier, and benchmarks realized performance against the Nifty 50 index.
