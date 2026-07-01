@@ -1,7 +1,6 @@
 from fastapi import HTTPException
 
 from src.data_service import get_prices
-from src.returns import calculate_returns
 from src.optimizer import optimize_portfolio
 from src.benchmark import compare_with_nifty
 
@@ -37,7 +36,6 @@ class PortfolioService:
             )
 
         try:
-            returns = calculate_returns(data)
             _, _, weights, ret, vol, sharpe = optimize_portfolio(data, max_weight=req.max_weight)
             basket_return, nifty_return = compare_with_nifty(
                 data, weights, start=req.start, end=req.end
