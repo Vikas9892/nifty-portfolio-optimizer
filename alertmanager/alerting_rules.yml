@@ -1,0 +1,80 @@
+groups:
+  - name: nifty_portfolio_alerts
+    interval: 30s
+    rules:
+      # ── API availability ──────────────────────────────────────────────────────
+      - alert: APIDown
+        expr: up{job="nifty-backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "Nifty Portfolio API is down"
+          description: >
+            The backend has been unreachable for 1 minute.
+            Check: docker ps / systemctl status backend
+
+      # ── Error rate ────────────────────────────────────────────────────────────
+      - alert: HighErrorRate
+        expr: |
+          (
+            rate(http_requests_total{status=~"5.."}[5m]) /
+            rate(http_requests_total[5m])
+          ) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Error rate > 5% for 2 minutes"
+          description: "{{ $value | humanizePercentage }} of requests are returning 5xx."
+
+      # ── P95 latency ───────────────────────────────────────────────────────────
+      - alert: SlowP95
+        expr: |
+          histogram_quantile(
+            0.95,
+            rate(http_request_duration_seconds_bucket[5m])
+          ) > 2
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "P95 response time > 2s"
+          description: "95th-percentile latency is {{ $value | humanizeDuration }}."
+
+      # ── Redis ─────────────────────────────────────────────────────────────────
+      - alert: RedisDown
+        expr: redis_up == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: platform
+        annotations:
+          summary: "Redis is unreachable"
+          description: "Cache, rate limiting, and job queues are degraded."
+
+      # ── Worker queue depth ────────────────────────────────────────────────────
+      - alert: DeepQueue
+        expr: rq_jobs_total{queue="optimize", state="queued"} > 100
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Optimize queue depth > 100"
+          description: >
+            {{ $value }} jobs are queued. Start more worker replicas.
+
+      # ── CPU ───────────────────────────────────────────────────────────────────
+      - alert: HighCPU
+        expr: process_cpu_seconds_total > 0.9
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "Backend CPU > 90%"
+          description: "Sustained high CPU — consider horizontal scaling."

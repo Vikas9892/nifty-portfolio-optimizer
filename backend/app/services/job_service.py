@@ -17,6 +17,7 @@ class JobStatus:
     RUNNING = "running"
     COMPLETED = "completed"
     FAILED = "failed"
+    DEAD = "dead"  # permanently failed — moved to DLQ
 
 
 class JobService:
@@ -51,6 +52,7 @@ class JobService:
             "result": None,
             "error": None,
             "request": request_data,
+            "retry_count": 0,  # M7: tracks failures before DLQ
         }
         cache.set(self._key(job_id), job, ttl=_JOB_TTL)
 
@@ -92,6 +94,15 @@ class JobService:
 
         metrics.increment("jobs:completed")
 
+    def increment_retry(self, job_id: str) -> int:
+        """Increment failure count and return the new value."""
+        job = self.get(job_id)
+        if not job:
+            return 0
+        new_count = job.get("retry_count", 0) + 1
+        self._update(job_id, {"retry_count": new_count, "status": JobStatus.QUEUED})
+        return new_count
+
     def mark_failed(self, job_id: str, error: str) -> None:
         self._update(
             job_id,
@@ -105,3 +116,7 @@ class JobService:
 
         metrics.increment("jobs:failed")
         logger.error("JOB | failed job_id=%s error=%s", job_id, error)
+
+    def mark_dead(self, job_id: str) -> None:
+        """Mark job as permanently dead (moved to DLQ)."""
+        self._update(job_id, {"status": JobStatus.DEAD})
