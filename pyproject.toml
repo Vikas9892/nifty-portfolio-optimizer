@@ -18,6 +18,8 @@ source   = ["backend/app", "src"]
 omit     = [
     "tests/*",
     "backend/app/routers/*",       # thin wiring — covered via integration tests
+    "backend/app/workers/*",       # RQ worker tasks — covered by E2E smoke tests
+    "backend/app/services/scheduler.py",  # APScheduler — tested in staging, not unit tests
 ]
 branch   = true
 
