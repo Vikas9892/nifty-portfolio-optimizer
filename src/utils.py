@@ -1,6 +1,7 @@
 import streamlit.runtime as streamlit_runtime
 
-from .downloader import download_prices
+from . import database as db
+from .data_service import get_prices
 from .returns import calculate_returns
 from .optimizer import optimize_portfolio
 from .simulator import simulate_portfolios
@@ -20,12 +21,21 @@ def running_in_streamlit():
 
 
 def run_pipeline(stocks, start, end, max_weight, num_portfolios):
-    """Execute data download, optimization, simulation, and benchmarking."""
-    data = download_prices(stocks=stocks, start=start, end=end)
+    """Fetch → optimize → simulate → benchmark → persist one full run."""
+    data = get_prices(tickers=list(stocks), start=start, end=end)
     returns = calculate_returns(data)
     mu, covariance, cleaned_weights, ret, vol, sharpe = optimize_portfolio(data, max_weight=max_weight)
     frontier = simulate_portfolios(returns, num_portfolios=num_portfolios)
     basket_return, nifty_return = compare_with_nifty(data, cleaned_weights, start=start, end=end)
+
+    db.save_portfolio(
+        tickers=list(data.columns),
+        start_date=start, end_date=end,
+        expected_return=ret, volatility=vol, sharpe=sharpe,
+        basket_return=basket_return, nifty_return=nifty_return,
+        max_weight=max_weight, num_portfolios=num_portfolios,
+        weights=dict(cleaned_weights),
+    )
 
     save_plot(create_frontier_figure(frontier, ret, vol), "efficient_frontier.png")
     save_plot(create_correlation_figure(returns), "correlation_heatmap.png")
@@ -38,8 +48,8 @@ def run_pipeline(stocks, start, end, max_weight, num_portfolios):
         "dashboard_overview.png",
     )
 
-    print(f"Stocks downloaded: {list(data.columns)}")
-    print(f"Cleaned weights: {dict((k, v) for k, v in cleaned_weights.items() if v > 0)}")
+    print(f"Stocks in basket:  {list(data.columns)}")
+    print(f"Cleaned weights:   {dict((k, v) for k, v in cleaned_weights.items() if v > 0)}")
     print(f"Return: {ret:.4f}  Volatility: {vol:.4f}  Sharpe: {sharpe:.4f}")
     print(f"Basket return: {basket_return:.4f}  Nifty return: {nifty_return:.4f}")
 
