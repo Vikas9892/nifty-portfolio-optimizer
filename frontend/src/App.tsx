@@ -5,6 +5,7 @@ import { PortfolioProvider } from './context/PortfolioContext'
 import { AuthProvider } from './context/AuthContext'
 import { ProtectedRoute } from './components/auth/ProtectedRoute'
 import { Layout } from './components/layout/Layout'
+import { AdminDashboard } from './pages/AdminDashboard'
 import { Dashboard } from './pages/Dashboard'
 import { Optimize } from './pages/Optimize'
 import { History } from './pages/History'
@@ -40,6 +41,7 @@ export default function App() {
                   <Route index element={<Dashboard />} />
                   <Route path="optimize" element={<Optimize />} />
                   <Route path="history" element={<History />} />
+                  <Route path="admin" element={<AdminDashboard />} />
                 </Route>
               </Route>
 

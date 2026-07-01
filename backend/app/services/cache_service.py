@@ -14,6 +14,8 @@ Cache key conventions:
     stocks:universe                 — full stock universe (TTL 1 h)
     portfolio:history:<user_id>     — user's portfolio list (TTL 2 min)
     portfolio:<portfolio_id>        — individual portfolio detail (TTL 5 min)
+    job:<job_id>                    — async job state (TTL 1 h)
+    metrics:<counter>               — performance counters (TTL 7 days)
 """
 
 from __future__ import annotations
@@ -48,14 +50,18 @@ class CacheService:
         except Exception as exc:
             logger.warning("CACHE | Redis unavailable (%s) — running cache-free", exc)
 
-    # ── Public API ─────────────────────────────────────────────────────────────
+    # ── Core get/set/delete ───────────────────────────────────────────────────
 
     def get(self, key: str) -> Any | None:
         if not self._ok:
             return None
         try:
             raw = self._client.get(key)
-            return json.loads(raw) if raw is not None else None
+            if raw is None:
+                self._track_miss()
+                return None
+            self._track_hit()
+            return json.loads(raw)
         except Exception:
             return None
 
@@ -72,7 +78,7 @@ class CacheService:
             self._client.delete(key)
 
     def invalidate_prefix(self, prefix: str) -> None:
-        """Delete all keys that start with `prefix:`. Uses KEYS — not for hot paths."""
+        """Delete all keys matching `prefix:*`. Uses KEYS — avoid on hot paths."""
         if not self._ok:
             return
         try:
@@ -81,6 +87,44 @@ class CacheService:
                 self._client.delete(*keys)
         except Exception:
             pass
+
+    # ── Atomic counters (for metrics and rate limiting) ───────────────────────
+
+    def increment(self, key: str, delta: int = 1, ttl: int = 86_400) -> int:
+        """Atomic integer increment. Returns new value (0 if Redis unavailable)."""
+        if not self._ok:
+            return 0
+        try:
+            pipe = self._client.pipeline()
+            pipe.incrby(key, delta)
+            pipe.expire(key, ttl)
+            return int(pipe.execute()[0])
+        except Exception:
+            return 0
+
+    def increment_float(self, key: str, delta: float, ttl: int = 86_400) -> float:
+        """Atomic float increment via INCRBYFLOAT. Returns new value."""
+        if not self._ok:
+            return 0.0
+        try:
+            pipe = self._client.pipeline()
+            pipe.incrbyfloat(key, delta)
+            pipe.expire(key, ttl)
+            return float(pipe.execute()[0])
+        except Exception:
+            return 0.0
+
+    # ── Internal helpers ──────────────────────────────────────────────────────
+
+    def _track_hit(self) -> None:
+        with contextlib.suppress(Exception):
+            if self._ok:
+                self._client.incr("metrics:cache:hits")
+
+    def _track_miss(self) -> None:
+        with contextlib.suppress(Exception):
+            if self._ok:
+                self._client.incr("metrics:cache:misses")
 
 
 cache = CacheService()

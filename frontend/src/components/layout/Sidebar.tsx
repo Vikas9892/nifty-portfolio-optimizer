@@ -1,4 +1,4 @@
-import { LogOut, LayoutDashboard, TrendingUp, History, Settings } from 'lucide-react'
+import { Activity, History, LayoutDashboard, LogOut, TrendingUp } from 'lucide-react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../hooks/useAuth'
@@ -7,10 +7,7 @@ const NAV = [
   { to: '/',         label: 'Dashboard', icon: LayoutDashboard, exact: true },
   { to: '/optimize', label: 'Optimize',  icon: TrendingUp,      exact: false },
   { to: '/history',  label: 'History',   icon: History,         exact: false },
-]
-
-const DISABLED = [
-  { label: 'Settings', icon: Settings },
+  { to: '/admin',    label: 'Metrics',   icon: Activity,        exact: false },
 ]
 
 export function Sidebar() {
@@ -50,22 +47,6 @@ export function Sidebar() {
             {label}
           </NavLink>
         ))}
-
-        {/* Disabled / coming-soon items */}
-        <div className="mt-4 border-t border-gray-100 pt-4 dark:border-gray-800">
-          <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
-            Coming Soon
-          </p>
-          {DISABLED.map(({ label, icon: Icon }) => (
-            <span
-              key={label}
-              className="flex cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-300 dark:text-gray-600"
-            >
-              <Icon size={17} />
-              {label}
-            </span>
-          ))}
-        </div>
       </nav>
 
       {/* User footer */}
