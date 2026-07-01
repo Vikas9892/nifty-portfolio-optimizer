@@ -8,21 +8,21 @@ import type {
 
 export const portfolioService = {
   async optimize(req: OptimizeRequest): Promise<OptimizeResponse> {
-    const { data } = await api.post<OptimizeResponse>('/optimize', req)
+    const { data } = await api.post<OptimizeResponse>('/api/v1/portfolio/optimize', req)
     return data
   },
 
   async getHistory(): Promise<PortfolioListItem[]> {
-    const { data } = await api.get<PortfolioListItem[]>('/history')
+    const { data } = await api.get<PortfolioListItem[]>('/api/v1/portfolio/history')
     return data
   },
 
   async getById(id: number): Promise<PortfolioDetail> {
-    const { data } = await api.get<PortfolioDetail>(`/portfolio/${id}`)
+    const { data } = await api.get<PortfolioDetail>(`/api/v1/portfolio/${id}`)
     return data
   },
 
   async delete(id: number): Promise<void> {
-    await api.delete(`/portfolio/${id}`)
+    await api.delete(`/api/v1/portfolio/${id}`)
   },
 }
