@@ -1,6 +1,6 @@
+from src.benchmark import compare_with_nifty
 from src.data_service import get_prices
 from src.optimizer import optimize_portfolio
-from src.benchmark import compare_with_nifty
 
 from backend.app.repositories.audit_repository import AuditRepository
 from backend.app.repositories.portfolio_repository import PortfolioRepository

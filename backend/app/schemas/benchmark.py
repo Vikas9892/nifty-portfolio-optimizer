@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -9,7 +9,7 @@ class BenchmarkRequest(BaseModel):
     stocks: list[str] = Field(..., min_length=1)
     weights: dict[str, float]
     start: str = "2020-01-01"
-    end: str = "2025-01-01"
+    end: str = Field(default_factory=lambda: (date.today() - timedelta(days=1)).isoformat())
 
     @field_validator("start", "end")
     @classmethod

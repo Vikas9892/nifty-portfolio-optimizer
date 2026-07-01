@@ -11,11 +11,18 @@ interface OptimizeFormProps {
   loading: boolean
 }
 
+/** Yesterday's date as YYYY-MM-DD — avoids using today when the market may not have closed yet. */
+function defaultEndDate(): string {
+  const d = new Date()
+  d.setDate(d.getDate() - 1)
+  return d.toISOString().split('T')[0]
+}
+
 export function OptimizeForm({ onSubmit, loading }: OptimizeFormProps) {
   const { data: universe, loading: loadingStocks, error: stocksError } = useStocks()
   const [selected, setSelected] = useState<Set<string>>(new Set(DEFAULT_STOCKS))
   const [start, setStart] = useState('2020-01-01')
-  const [end, setEnd] = useState('2025-01-01')
+  const [end, setEnd] = useState(defaultEndDate)
   const [maxWeight, setMaxWeight] = useState(0.30)
 
   const toggle = (ticker: string) =>
