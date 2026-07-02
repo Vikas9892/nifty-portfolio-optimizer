@@ -1,0 +1,45 @@
+# Production dependencies — used by backend/Dockerfile
+# Dev-only tools (matplotlib, seaborn, streamlit, locust) are excluded
+# to keep the Docker image under 500 MB.
+# For local development install the full requirements.txt instead.
+
+# Core data / optimization
+numpy
+pandas
+yfinance
+pyportfolioopt
+
+# Web framework
+fastapi
+uvicorn[standard]
+
+# Auth & security
+bcrypt
+python-jose[cryptography]==3.5.0
+
+# Configuration / validation
+pydantic-settings==2.14.2
+python-dotenv
+email-validator==2.3.0
+
+# Rate limiting
+slowapi==0.1.10
+
+# Database — SQLite (dev) + PostgreSQL (prod)
+sqlalchemy>=2.0
+psycopg2-binary
+
+# Caching
+redis[hiredis]
+
+# Background jobs
+rq>=1.16
+
+# Task scheduling
+apscheduler>=3.10
+
+# Retry & resilience
+tenacity>=8.2
+
+# Observability
+prometheus-fastapi-instrumentator>=6.1

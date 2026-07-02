@@ -274,50 +274,71 @@ cd frontend && npm run test:coverage
 
 ## Deploy to Production
 
-The GitHub Actions CD pipeline (`deploy.yml`) auto-deploys on every push to `main`. You need three things:
+Two websites, ~5 minutes total. No CLI needed.
 
-### 1. Backend → Railway
+### Step 1 — Backend on Railway (free)
 
-```bash
-npm install -g @railway/cli
-railway login                        # opens browser
-railway init                         # link to your Railway project
-railway add --plugin postgresql      # add Postgres
-railway add --plugin redis           # add Redis
-railway variables set JWT_SECRET_KEY=$(python -c "import secrets; print(secrets.token_hex(32))")
-railway variables set ENVIRONMENT=production
-railway up                           # first deploy
-```
+1. Go to **[railway.app](https://railway.app)** → **Login with GitHub**
+2. **New Project** → **Deploy from GitHub repo** → select `nifty-portfolio-optimizer`
+3. Click **+ Add** → **Database** → **Add PostgreSQL** *(auto-sets `DATABASE_URL`)*
+4. Click **+ Add** → **Database** → **Add Redis** *(auto-sets `REDIS_URL`)*
+5. Go to your service → **Variables** tab → click **New Variable** for each:
 
-Copy the Railway public URL (e.g. `https://nifty-api.up.railway.app`).
+   | Variable | Value |
+   |---|---|
+   | `JWT_SECRET_KEY` | `04a7aedd890332203e005f17a6c41e2d7a5ad1eb435bc1fdf5ae105e98106ee4` |
+   | `ENVIRONMENT` | `production` |
+   | `WORKERS` | `2` |
+   | `CORS_ORIGINS` | `["https://nifty-portfolio-optimizer.vercel.app"]` |
+   | `LOG_FORMAT` | `json` |
 
-### 2. Frontend → Vercel
+6. Railway builds the Docker image and gives you a URL → **copy it** (looks like `https://nifty-api-production-xxxx.up.railway.app`)
 
-```bash
-npm install -g vercel
-cd frontend
-vercel                               # follow prompts, link GitHub repo
-vercel env add VITE_API_URL          # paste your Railway backend URL
-vercel --prod
-```
+### Step 2 — Frontend on Vercel (free)
 
-Copy the Vercel URL (e.g. `https://nifty-portfolio-optimizer.vercel.app`).
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Vikas9892/nifty-portfolio-optimizer&root=frontend)
 
-### 3. Wire up CORS + CI secrets
+Or manually:
 
-```bash
-# Tell the backend which frontend URL to allow:
-railway variables set CORS_ORIGINS='["https://your-app.vercel.app"]'
+1. Go to **[vercel.com](https://vercel.com)** → **Login with GitHub**
+2. **Add New Project** → Import `nifty-portfolio-optimizer`
+3. Set **Root Directory** = `frontend`
+4. Under **Environment Variables** add:
 
-# Add to GitHub repo secrets (Settings → Secrets → Actions):
-# RAILWAY_TOKEN    — railway whoami --token
-# VERCEL_TOKEN     — vercel whoami --token
-# VERCEL_ORG_ID    — from .vercel/project.json after `vercel`
-# VERCEL_PROJECT_ID — from .vercel/project.json after `vercel`
-# BACKEND_URL      — your Railway URL (for smoke tests)
-```
+   | Variable | Value |
+   |---|---|
+   | `VITE_API_URL` | *(paste your Railway URL from Step 1)* |
 
-After this, every `git push main` triggers: lint → test → Docker build → Railway deploy → Vercel deploy → smoke test.
+5. Click **Deploy** → Vercel gives you `https://nifty-portfolio-optimizer.vercel.app`
+
+### Step 3 — Enable CI auto-deploy (optional)
+
+Go to **GitHub repo → Settings → Secrets and variables → Actions** and add:
+
+| Secret | Where to find it |
+|---|---|
+| `RAILWAY_TOKEN` | Railway → Account Settings → Tokens → **Create Token** |
+| `VERCEL_TOKEN` | Vercel → Settings → Tokens → **Create** |
+| `VERCEL_ORG_ID` | Vercel → Settings → General → **Team ID** |
+| `VERCEL_PROJECT_ID` | Vercel → Project → Settings → **Project ID** |
+
+Go to **Settings → Variables → Actions** and add:
+
+| Variable | Value |
+|---|---|
+| `BACKEND_URL` | Your Railway URL |
+| `VITE_API_URL` | Your Railway URL |
+
+After this, every `git push main` triggers: lint → tests → Docker build → Railway deploy → Vercel deploy → smoke test.
+
+### Your live links (fill in after deploying)
+
+| Service | URL |
+|---|---|
+| Frontend | `https://nifty-portfolio-optimizer.vercel.app` |
+| Backend API | *(your Railway URL)* |
+| Swagger docs | `*(your Railway URL)*/docs` |
+| ReDoc | `*(your Railway URL)*/redoc` |
 
 ---
 

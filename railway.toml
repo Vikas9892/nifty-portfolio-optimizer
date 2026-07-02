@@ -1,21 +1,24 @@
-# Railway deployment — backend only
+# Railway deployment — backend API
 # Docs: https://docs.railway.app/reference/config-as-code
+#
+# Required environment variables (set in Railway dashboard → Variables):
+#
+#   JWT_SECRET_KEY   = <32-byte hex>   python -c "import secrets; print(secrets.token_hex(32))"
+#   ENVIRONMENT      = production
+#   WORKERS          = 2
+#   CORS_ORIGINS     = ["https://your-app.vercel.app"]
+#
+# Auto-provided by Railway plugins (no manual entry needed):
+#   DATABASE_URL     ← Add PostgreSQL plugin
+#   REDIS_URL        ← Add Redis plugin
+#   PORT             ← Set automatically by Railway
 
 [build]
 builder = "dockerfile"
 dockerfilePath = "backend/Dockerfile"
 
 [deploy]
-# Railway injects $PORT automatically
-startCommand = "uvicorn backend.main:app --host 0.0.0.0 --port $PORT --workers 2"
 healthcheckPath = "/health"
-healthcheckTimeout = 30
+healthcheckTimeout = 60
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
-
-# Environment variables are set via Railway dashboard or CLI:
-#   railway variables set JWT_SECRET_KEY=<secret>
-#   railway variables set DATABASE_URL=${{Postgres.DATABASE_URL}}
-#   railway variables set REDIS_URL=${{Redis.REDIS_URL}}
-#   railway variables set ENVIRONMENT=production
-#   railway variables set CORS_ORIGINS='["https://nifty-optimizer.vercel.app"]'
