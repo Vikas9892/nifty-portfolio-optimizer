@@ -36,7 +36,7 @@ redis[hiredis]
 rq>=1.16
 
 # Task scheduling
-apscheduler>=3.10
+apscheduler>=3.11.3
 
 # Retry & resilience
 tenacity>=8.2

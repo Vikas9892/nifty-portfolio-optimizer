@@ -33,7 +33,7 @@ redis[hiredis]
 rq>=1.16
 
 # Task scheduling — Phase 8
-apscheduler>=3.10
+apscheduler>=3.11.3
 
 # Retry & resilience — Phase 8
 tenacity>=8.2
