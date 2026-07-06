@@ -33,7 +33,7 @@ psycopg2-binary
 redis[hiredis]
 
 # Background jobs
-rq>=1.16
+rq>=2.10.0
 
 # Task scheduling
 apscheduler>=3.10
