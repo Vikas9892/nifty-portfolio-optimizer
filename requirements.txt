@@ -42,7 +42,7 @@ tenacity>=8.2
 prometheus-fastapi-instrumentator>=6.1
 
 # Load testing — Phase 8 (dev dependency)
-locust>=2.20
+locust>=2.44.4
 
 # Streamlit UI (optional / legacy)
 streamlit
