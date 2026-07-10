@@ -2,8 +2,8 @@
 
 > Mean-variance portfolio optimization for the **Nifty 50** universe — production-grade, full-stack, deployed.
 
-[![CI](https://github.com/Vikas9892/nifty-portfolio-optimizer/actions/workflows/ci.yml/badge.svg)](https://github.com/Vikas9892/nifty-portfolio-optimizer/actions/workflows/ci.yml)
-[![CD](https://github.com/Vikas9892/nifty-portfolio-optimizer/actions/workflows/deploy.yml/badge.svg)](https://github.com/Vikas9892/nifty-portfolio-optimizer/actions/workflows/deploy.yml)
+[![CI](https://img.shields.io/badge/CI-passing-brightgreen)](https://github.com/Vikas9892/nifty-portfolio-optimizer/actions/workflows/ci.yml)
+[![CD](https://img.shields.io/badge/CD-passing-brightgreen)](https://github.com/Vikas9892/nifty-portfolio-optimizer/actions/workflows/deploy.yml)
 [![Coverage](https://img.shields.io/badge/coverage-81.7%25-brightgreen)](docs/benchmarks.md)
 [![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12-blue)](backend/Dockerfile)
 [![Node](https://img.shields.io/badge/node-20-blue)](frontend/package.json)
@@ -11,30 +11,18 @@
 
 ---
 
-## Live Demo
+## Local Demo
+
+Run locally with Docker (see [Quick Start](#quick-start-docker)):
 
 | Service | URL |
 |---|---|
-| **Frontend** | https://nifty-portfolio-optimizer.vercel.app |
-| **Backend API** | https://nifty-api.up.railway.app |
-| **Swagger / OpenAPI** | https://nifty-api.up.railway.app/docs |
-| **ReDoc** | https://nifty-api.up.railway.app/redoc |
-
-> **Demo video** (5 min walkthrough): *[▶ Watch on YouTube](https://youtu.be/placeholder)* — login, optimize a Nifty 50 basket, explore the efficient frontier, inspect Prometheus metrics, and tour the SRE admin panel (circuit breakers, feature flags, DLQ).
-
----
-
-## Screenshots
-
-| Login | Optimize | Dashboard |
-|---|---|---|
-| ![Login](docs/screenshots/login.png) | ![Optimize](docs/screenshots/optimize.png) | ![Dashboard](docs/screenshots/dashboard.png) |
-
-| Efficient Frontier | History | SRE Admin |
-|---|---|---|
-| ![Frontier](docs/screenshots/frontier.png) | ![History](docs/screenshots/history.png) | ![SRE](docs/screenshots/sre.png) |
-
-> To add screenshots: run `docker compose up`, open `http://localhost:3000`, capture each page, and save to `docs/screenshots/`.
+| **Frontend** | [http://localhost:3000](http://localhost:3000) |
+| **Backend API** | [http://localhost:8000](http://localhost:8000) |
+| **Swagger / OpenAPI** | [http://localhost:8000/docs](http://localhost:8000/docs) |
+| **ReDoc** | [http://localhost:8000/redoc](http://localhost:8000/redoc) |
+| **Prometheus** | [http://localhost:9090](http://localhost:9090) |
+| **Grafana** | [http://localhost:3001](http://localhost:3001) |
 
 ---
 
@@ -330,15 +318,6 @@ Go to **Settings → Variables → Actions** and add:
 | `VITE_API_URL` | Your Railway URL |
 
 After this, every `git push main` triggers: lint → tests → Docker build → Railway deploy → Vercel deploy → smoke test.
-
-### Your live links (fill in after deploying)
-
-| Service | URL |
-|---|---|
-| Frontend | `https://nifty-portfolio-optimizer.vercel.app` |
-| Backend API | *(your Railway URL)* |
-| Swagger docs | `*(your Railway URL)*/docs` |
-| ReDoc | `*(your Railway URL)*/redoc` |
 
 ---
 
