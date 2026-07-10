@@ -1,9 +1,5 @@
-# ── Backend Dockerfile ────────────────────────────────────────────────────────
-# Multi-stage: install deps, then copy app. Python 3.12-slim for a small image.
-
 FROM python:3.12-slim AS base
 
-# System deps: libpq for psycopg2, gcc for native extensions
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libpq-dev \
         gcc \
@@ -12,25 +8,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# Install production Python dependencies before copying source (layer-cache friendly)
-# requirements.prod.txt excludes matplotlib/seaborn/streamlit/locust (~900 MB saved)
 COPY requirements.prod.txt ./
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.prod.txt
 
-# Copy source
-COPY . .
+# Copy backend source into /app/backend/ so "from backend.app..." imports resolve
+COPY . /app/backend/
 
-# Create data directory for SQLite (bind-mounted in docker-compose)
-RUN mkdir -p data
+RUN mkdir -p /app/data
 
 EXPOSE 8000
 
-# Liveness probe so Docker / Compose can restart unhealthy containers
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
-# entrypoint.sh is already present at /app/scripts/entrypoint.sh via COPY . .
-RUN chmod +x /app/scripts/entrypoint.sh
+RUN chmod +x /app/backend/scripts/entrypoint.sh
 
-ENTRYPOINT ["/app/scripts/entrypoint.sh"]
+ENTRYPOINT ["/app/backend/scripts/entrypoint.sh"]
