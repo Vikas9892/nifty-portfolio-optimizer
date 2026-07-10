@@ -1,41 +1,6 @@
 #!/bin/sh
 set -e
 
-echo "==> Checking database connectivity..."
-
-MAX_RETRIES=30
-RETRY_INTERVAL=2
-n=0
-
-until python - <<'PYEOF'
-import os, sys
-url = os.environ.get("DATABASE_URL", "sqlite:///data/portfolio.db")
-if url.startswith("postgres://"):
-    url = url.replace("postgres://", "postgresql://", 1)
-if url.startswith("sqlite"):
-    sys.exit(0)
-try:
-    from sqlalchemy import create_engine, text
-    engine = create_engine(url, pool_pre_ping=True)
-    with engine.connect() as conn:
-        conn.execute(text("SELECT 1"))
-    sys.exit(0)
-except Exception as e:
-    print(f"  DB not ready: {e}", file=sys.stderr)
-    sys.exit(1)
-PYEOF
-do
-    n=$((n + 1))
-    if [ "$n" -ge "$MAX_RETRIES" ]; then
-        echo "==> ERROR: database did not become ready after $MAX_RETRIES attempts."
-        exit 1
-    fi
-    echo "  Waiting for database... (attempt $n/$MAX_RETRIES)"
-    sleep "$RETRY_INTERVAL"
-done
-
-echo "==> Database ready."
-
 WORKERS=${WORKERS:-1}
 PORT=${PORT:-8000}
 
