@@ -30,8 +30,7 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
-# scripts/entrypoint.sh waits for the DB then starts uvicorn
-COPY scripts/entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+# entrypoint.sh is already present at /app/scripts/entrypoint.sh via COPY . .
+RUN chmod +x /app/scripts/entrypoint.sh
 
-ENTRYPOINT ["/entrypoint.sh"]
+ENTRYPOINT ["/app/scripts/entrypoint.sh"]
