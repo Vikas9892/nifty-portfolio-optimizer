@@ -25,8 +25,15 @@ limiter = Limiter(key_func=get_remote_address, default_limits=["200/minute"])
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    db_url = settings.database_url
+    masked = db_url[:10] + "***" if len(db_url) > 10 else "***"
+    logger.info("STARTUP | DATABASE_URL scheme: %s", masked)
     logger.info("STARTUP | Initialising database tables…")
-    init_all_tables()
+    try:
+        init_all_tables()
+        logger.info("STARTUP | Database tables ready")
+    except Exception as exc:
+        logger.error("STARTUP | Database init failed — app will still start: %s", exc)
 
     # Phase 8: Prometheus instrumentation
     try:
