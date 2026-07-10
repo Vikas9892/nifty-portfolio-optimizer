@@ -8,13 +8,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# requirements.prod.txt lives at backend/requirements.prod.txt (repo-root context)
-COPY backend/requirements.prod.txt ./requirements.prod.txt
+COPY requirements.prod.txt ./
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.prod.txt
 
-# Copy entire repo: backend/ and src/ both land under /app/
-COPY . .
+# Copy backend source into /app/backend/ so "from backend.X" imports resolve
+COPY . /app/backend/
 
 RUN mkdir -p /app/data
 

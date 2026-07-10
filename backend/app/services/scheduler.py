@@ -44,7 +44,7 @@ async def _do_refresh() -> None:
     try:
         import datetime
 
-        from src.data_service import get_prices
+        from backend.src.data_service import get_prices
 
         end = datetime.date.today().isoformat()
         start = (datetime.date.today() - datetime.timedelta(days=7)).isoformat()
