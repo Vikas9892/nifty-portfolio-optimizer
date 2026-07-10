@@ -36,32 +36,14 @@ class Settings(BaseSettings):
     # Redis — optional; app degrades gracefully when absent
     redis_url: str = ""
 
-    # CORS — accepts JSON array, comma-separated string, or empty (uses default)
-    cors_origins: list[str] = [
-        "http://localhost:3000",
-        "http://localhost:5173",
-        "http://localhost:80",
-        "http://localhost",
-    ]
-
-    @field_validator("cors_origins", mode="before")
-    @classmethod
-    def parse_cors_origins(cls, v: object) -> object:
-        if isinstance(v, str):
-            v = v.strip()
-            if not v:
-                return [
-                    "http://localhost:3000",
-                    "http://localhost:5173",
-                    "http://localhost:80",
-                    "http://localhost",
-                ]
-            import json as _json
-            try:
-                return _json.loads(v)
-            except _json.JSONDecodeError:
-                return [o.strip() for o in v.split(",") if o.strip()]
-        return v
+    # CORS — plain string so pydantic-settings never attempts JSON parsing on it.
+    # Accepts JSON array or comma-separated list; parsed at app startup in main.py.
+    cors_origins: str = (
+        "http://localhost:3000,"
+        "http://localhost:5173,"
+        "http://localhost:80,"
+        "http://localhost"
+    )
 
     # Rate limiting
     rate_limit_login: str = "5/minute"

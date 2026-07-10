@@ -91,9 +91,20 @@ app = FastAPI(
 )
 
 # ── Middleware (applied bottom-up — last added = outermost wrap) ──────────────
+def _parse_cors_origins(raw: str) -> list[str]:
+    import json as _json
+    raw = raw.strip()
+    if not raw:
+        return ["http://localhost:3000", "http://localhost:5173"]
+    try:
+        return _json.loads(raw)
+    except _json.JSONDecodeError:
+        return [o.strip() for o in raw.split(",") if o.strip()]
+
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins,
+    allow_origins=_parse_cors_origins(settings.cors_origins),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
