@@ -12,15 +12,15 @@ uvicorn[standard]
 
 # Auth & security
 bcrypt
-python-jose[cryptography]==3.5.0
+python-jose[cryptography]>=3.3.0
 
 # Configuration / validation
-pydantic-settings==2.14.2
+pydantic-settings>=2.0
 python-dotenv
-email-validator==2.3.0
+email-validator>=2.0
 
 # Rate limiting
-slowapi==0.1.10
+slowapi>=0.1.9
 
 # Database — SQLite (dev) + PostgreSQL (prod)
 sqlalchemy>=2.0
