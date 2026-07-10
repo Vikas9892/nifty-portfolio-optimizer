@@ -1,4 +1,4 @@
-from config import NIFTY_50, NIFTY_50_STOCKS
+from backend.config import NIFTY_50, NIFTY_50_STOCKS
 from fastapi import APIRouter, Depends
 
 from backend.app.core.dependencies import get_current_user
