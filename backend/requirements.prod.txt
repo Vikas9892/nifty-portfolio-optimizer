@@ -1,0 +1,40 @@
+# Core data / optimization
+numpy
+pandas
+yfinance
+pyportfolioopt
+
+# Web framework
+fastapi
+uvicorn[standard]
+
+# Auth & security
+bcrypt
+python-jose[cryptography]>=3.3.0
+
+# Configuration / validation
+pydantic-settings>=2.0
+python-dotenv
+email-validator>=2.0
+
+# Rate limiting
+slowapi>=0.1.9
+
+# Database — SQLite (dev) + PostgreSQL (prod)
+sqlalchemy>=2.0
+psycopg2-binary
+
+# Caching
+redis[hiredis]
+
+# Background jobs
+rq>=1.16
+
+# Task scheduling
+apscheduler>=3.10
+
+# Retry & resilience
+tenacity>=8.2
+
+# Observability
+prometheus-fastapi-instrumentator>=6.1

@@ -14,7 +14,7 @@ WORKDIR /app
 
 # Install production Python dependencies before copying source (layer-cache friendly)
 # requirements.prod.txt excludes matplotlib/seaborn/streamlit/locust (~900 MB saved)
-COPY requirements.txt requirements.prod.txt ./
+COPY requirements.prod.txt ./
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.prod.txt
 
