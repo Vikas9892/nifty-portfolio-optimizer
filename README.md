@@ -11,6 +11,19 @@
 
 ---
 
+## Live Demo
+
+| Service | URL |
+|---|---|
+| **Frontend** | [https://nifty-portfolio-optimizer-vxky.vercel.app](https://nifty-portfolio-optimizer-vxky.vercel.app) |
+| **Backend API** | [https://nifty-optimizer-api-production.up.railway.app](https://nifty-optimizer-api-production.up.railway.app) |
+| **Swagger / OpenAPI** | [https://nifty-optimizer-api-production.up.railway.app/docs](https://nifty-optimizer-api-production.up.railway.app/docs) |
+| **ReDoc** | [https://nifty-optimizer-api-production.up.railway.app/redoc](https://nifty-optimizer-api-production.up.railway.app/redoc) |
+| **Prometheus** | http://localhost:9090 *(local only)* |
+| **Grafana** | http://localhost:3001 *(local only)* |
+
+---
+
 ## Local Demo
 
 Run locally with Docker (see [Quick Start](#quick-start-docker)):
@@ -277,7 +290,7 @@ Two websites, ~5 minutes total. No CLI needed.
    | `JWT_SECRET_KEY` | `04a7aedd890332203e005f17a6c41e2d7a5ad1eb435bc1fdf5ae105e98106ee4` |
    | `ENVIRONMENT` | `production` |
    | `WORKERS` | `2` |
-   | `CORS_ORIGINS` | `["https://nifty-portfolio-optimizer.vercel.app"]` |
+   | `CORS_ORIGINS` | `["https://nifty-portfolio-optimizer-vxky.vercel.app"]` |
    | `LOG_FORMAT` | `json` |
 
 6. Railway builds the Docker image and gives you a URL → **copy it** (looks like `https://nifty-api-production-xxxx.up.railway.app`)
@@ -297,7 +310,7 @@ Or manually:
    |---|---|
    | `VITE_API_URL` | *(paste your Railway URL from Step 1)* |
 
-5. Click **Deploy** → Vercel gives you `https://nifty-portfolio-optimizer.vercel.app`
+5. Click **Deploy** → Vercel gives you `https://nifty-portfolio-optimizer-vxky.vercel.app`
 
 ### Step 3 — Enable CI auto-deploy (optional)
 
