@@ -1,3 +1,4 @@
+import json
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, status
@@ -90,18 +91,17 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
-# ── Middleware (applied bottom-up — last added = outermost wrap) ──────────────
 def _parse_cors_origins(raw: str) -> list[str]:
-    import json as _json
     raw = raw.strip()
     if not raw:
         return ["http://localhost:3000", "http://localhost:5173"]
     try:
-        return _json.loads(raw)
-    except _json.JSONDecodeError:
+        return json.loads(raw)
+    except json.JSONDecodeError:
         return [o.strip() for o in raw.split(",") if o.strip()]
 
 
+# ── Middleware (applied bottom-up — last added = outermost wrap) ──────────────
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_parse_cors_origins(settings.cors_origins),
