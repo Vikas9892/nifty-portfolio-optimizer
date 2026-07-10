@@ -10,6 +10,8 @@ n=0
 until python - <<'PYEOF'
 import os, sys
 url = os.environ.get("DATABASE_URL", "sqlite:///data/portfolio.db")
+if url.startswith("postgres://"):
+    url = url.replace("postgres://", "postgresql://", 1)
 if url.startswith("sqlite"):
     sys.exit(0)
 try:

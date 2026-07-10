@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -23,6 +24,14 @@ class Settings(BaseSettings):
 
     # Database — "sqlite:///path" or "postgresql://user:pass@host/db"
     database_url: str = "sqlite:///data/portfolio.db"
+
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def fix_postgres_scheme(cls, v: str) -> str:
+        # Railway/Heroku provide "postgres://" but SQLAlchemy requires "postgresql://"
+        if isinstance(v, str) and v.startswith("postgres://"):
+            return v.replace("postgres://", "postgresql://", 1)
+        return v
 
     # Redis — optional; app degrades gracefully when absent
     redis_url: str = ""
