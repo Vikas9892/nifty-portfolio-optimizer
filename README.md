@@ -19,8 +19,7 @@
 | **Backend API** | [https://nifty-optimizer-api-production.up.railway.app](https://nifty-optimizer-api-production.up.railway.app) |
 | **Swagger / OpenAPI** | [https://nifty-optimizer-api-production.up.railway.app/docs](https://nifty-optimizer-api-production.up.railway.app/docs) |
 | **ReDoc** | [https://nifty-optimizer-api-production.up.railway.app/redoc](https://nifty-optimizer-api-production.up.railway.app/redoc) |
-| **Prometheus** | http://localhost:9090 *(local only)* |
-| **Grafana** | http://localhost:3001 *(local only)* |
+| **Prometheus / Grafana** | Run locally via Docker — see [Local Demo](#local-demo) |
 
 ---
 
