@@ -39,10 +39,7 @@ class Settings(BaseSettings):
     # CORS — plain string so pydantic-settings never attempts JSON parsing on it.
     # Accepts JSON array or comma-separated list; parsed at app startup in main.py.
     cors_origins: str = (
-        "http://localhost:3000,"
-        "http://localhost:5173,"
-        "http://localhost:80,"
-        "http://localhost"
+        "http://localhost:3000,http://localhost:5173,http://localhost:80,http://localhost"
     )
 
     # Rate limiting

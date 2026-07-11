@@ -91,6 +91,7 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
+
 def _parse_cors_origins(raw: str) -> list[str]:
     raw = raw.strip()
     if not raw:
