@@ -1,7 +1,3 @@
-from backend.src.benchmark import compare_with_nifty
-from backend.src.data_service import get_prices
-from backend.src.optimizer import optimize_portfolio
-
 from backend.app.repositories.audit_repository import AuditRepository
 from backend.app.repositories.portfolio_repository import PortfolioRepository
 from backend.app.schemas.auth import UserResponse
@@ -15,6 +11,9 @@ from backend.app.schemas.portfolio import (
 from backend.app.services.cache_service import cache
 from backend.app.utils.exceptions import ExternalServiceError, OptimizationError, ValidationError
 from backend.app.utils.logger import logger
+from backend.src.benchmark import compare_with_nifty
+from backend.src.data_service import get_prices
+from backend.src.optimizer import optimize_portfolio
 
 _HISTORY_TTL = 120  # 2 min — invalidated on save / delete
 _DETAIL_TTL = 300  # 5 min

@@ -1,8 +1,7 @@
-from backend.src.benchmark import compare_with_nifty
-from backend.src.data_service import get_prices
-
 from backend.app.schemas.benchmark import BenchmarkRequest, BenchmarkResponse
 from backend.app.utils.exceptions import ExternalServiceError, OptimizationError, ValidationError
+from backend.src.benchmark import compare_with_nifty
+from backend.src.data_service import get_prices
 
 
 class BenchmarkService:
