@@ -30,7 +30,7 @@ psycopg2-binary
 redis[hiredis]
 
 # Background jobs — Phase 8
-rq>=1.16
+rq>=2.10.0
 
 # Task scheduling — Phase 8
 apscheduler>=3.10
