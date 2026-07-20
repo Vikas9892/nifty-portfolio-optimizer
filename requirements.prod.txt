@@ -26,7 +26,7 @@ email-validator>=2.0
 slowapi>=0.1.9
 
 # Database — SQLite (dev) + PostgreSQL (prod)
-sqlalchemy>=2.0
+sqlalchemy>=2.0.51
 psycopg2-binary
 
 # Caching
