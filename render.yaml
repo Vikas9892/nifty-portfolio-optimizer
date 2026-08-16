@@ -1,33 +1,62 @@
-# Render deployment — alternative to Railway
+# Render deployment — backend API (free tier)
 # Docs: https://render.com/docs/blueprint-spec
+#
+# Database: Neon (https://neon.tech) free Postgres — set DATABASE_URL manually
+# in the Render dashboard. Render's own free Postgres is deleted after 30 days,
+# so it is deliberately NOT provisioned here.
+#
+# Manual env vars to set in the dashboard (marked `sync: false` below):
+#   DATABASE_URL  = postgresql://user:pass@ep-xxx.neon.tech/neondb?sslmode=require
+#   CORS_ORIGINS  = https://your-frontend.vercel.app
+#
+# See docs/RENDER_DEPLOY.md for the full walkthrough.
 
 services:
   - type: web
     name: nifty-optimizer-api
     runtime: docker
-    dockerfilePath: backend/Dockerfile
-    plan: starter
+    plan: free
     region: singapore
     branch: main
+
+    # Build context MUST be ./backend — the Dockerfile does `COPY . /app/backend/`
+    # so that `from backend.app...` imports resolve at runtime.
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+
     healthCheckPath: /health
+    autoDeploy: true
+
     envVars:
       - key: ENVIRONMENT
         value: production
-      - key: JWT_SECRET_KEY
-        sync: false          # Set in Render dashboard
-      - key: DATABASE_URL
-        fromDatabase:
-          name: nifty-postgres
-          property: connectionString
-      - key: REDIS_URL
-        sync: false          # Set from Upstash
-      - key: CORS_ORIGINS
-        value: '["https://nifty-optimizer.onrender.com","https://nifty-optimizer.vercel.app"]'
-      - key: WORKERS
-        value: "2"
 
-databases:
-  - name: nifty-postgres
-    databaseName: nifty_optimizer
-    plan: starter
-    region: singapore
+      # Free instances get 512 MB RAM — a single uvicorn worker is all that fits
+      # once numpy/pandas/yfinance are loaded.
+      - key: WORKERS
+        value: "1"
+
+      # Free instances spin down after 15 min idle, so a cron-style in-process
+      # scheduler would never fire reliably. Disabled to save memory.
+      - key: SCHEDULER_ENABLED
+        value: "false"
+
+      - key: LOG_FORMAT
+        value: json
+
+      # Render generates this once and keeps it stable across deploys.
+      - key: JWT_SECRET_KEY
+        generateValue: true
+
+      # Neon connection string — paste in the dashboard.
+      - key: DATABASE_URL
+        sync: false
+
+      # Frontend origin(s) — comma-separated or a JSON array.
+      - key: CORS_ORIGINS
+        sync: false
+
+      # Redis is optional; the app runs cache-free when unset. Add an
+      # Upstash or Render Key Value URL here later to enable caching + async jobs.
+      - key: REDIS_URL
+        value: ""

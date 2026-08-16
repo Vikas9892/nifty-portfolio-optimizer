@@ -19,8 +19,9 @@ RUN mkdir -p /app/data
 
 EXPOSE 8000
 
+# PORT is injected by the platform (Render sets 10000); fall back to 8000 locally.
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+    CMD curl -f "http://localhost:${PORT:-8000}/health" || exit 1
 
 RUN chmod +x /app/backend/scripts/entrypoint.sh
 

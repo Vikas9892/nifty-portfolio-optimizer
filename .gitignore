@@ -1,2 +1,28 @@
 __pycache__/
 *.pyc
+
+# Secrets — never commit real values.
+# .env.example / .env.development / .env.test / .env.production are templates
+# and stay tracked; the local .env files are not.
+.env
+.env.local
+frontend/.env
+frontend/.env.local
+
+# Local data / build output
+*.db
+*.sqlite3
+data/*.db
+plots/
+frontend/dist/
+frontend/node_modules/
+frontend/coverage/
+
+# Test & tooling caches
+.coverage
+htmlcov/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.venv/
+venv/

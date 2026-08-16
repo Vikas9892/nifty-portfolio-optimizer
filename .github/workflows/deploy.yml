@@ -56,7 +56,10 @@ jobs:
       - name: Build & push backend
         uses: docker/build-push-action@v5
         with:
-          context: .
+          # Must match render.yaml's dockerContext — the Dockerfile does
+          # `COPY . /app/backend/`, so a repo-root context nests the package one
+          # level too deep and every `from backend.…` import fails at runtime.
+          context: ./backend
           file: backend/Dockerfile
           push: true
           tags: ${{ steps.meta-backend.outputs.tags }}
@@ -76,29 +79,28 @@ jobs:
           cache-from: type=gha
           cache-to:   type=gha,mode=max
 
-  # ── Deploy backend to Railway ───────────────────────────────────────────────
+  # ── Deploy backend to Render ────────────────────────────────────────────────
+  # Render also auto-deploys on push (autoDeploy: true in render.yaml). This job
+  # is only needed if you turn autoDeploy off and want CI to gate the deploy.
+  # Set the RENDER_DEPLOY_HOOK secret to the hook URL from
+  # Render dashboard → service → Settings → Deploy Hook.
   deploy-backend:
-    name: Deploy backend → Railway
+    name: Deploy backend → Render
     runs-on: ubuntu-latest
     needs: docker-build
     environment: production
     if: github.ref == 'refs/heads/main'
 
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Railway CLI
-        run: npm install -g @railway/cli
-
-      - name: Deploy to Railway
+      - name: Trigger Render deploy
         env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
         run: |
-          if [ -z "$RAILWAY_TOKEN" ]; then
-            echo "RAILWAY_TOKEN secret not configured — skipping deploy"
+          if [ -z "$RENDER_DEPLOY_HOOK" ]; then
+            echo "RENDER_DEPLOY_HOOK secret not configured — relying on Render autoDeploy"
             exit 0
           fi
-          railway up --service backend --detach
+          curl --fail --silent --show-error "$RENDER_DEPLOY_HOOK"
 
   # ── Deploy frontend to Vercel ───────────────────────────────────────────────
   deploy-frontend:
@@ -149,6 +151,10 @@ jobs:
             echo "BACKEND_URL variable not configured — skipping smoke test"
             exit 0
           fi
-          sleep 20
-          curl --fail --retry 5 --retry-delay 5 "$BACKEND_URL/health"
-          curl --fail --retry 5 --retry-delay 5 "$BACKEND_URL/ready"
+          # Render free instances build for several minutes and cold-start on the
+          # first request, so retry generously (up to ~10 min) before failing.
+          sleep 60
+          curl --fail --retry 60 --retry-delay 10 --retry-all-errors \
+               --max-time 120 "$BACKEND_URL/health"
+          curl --fail --retry 12 --retry-delay 10 --retry-all-errors \
+               --max-time 120 "$BACKEND_URL/ready"

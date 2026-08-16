@@ -16,9 +16,9 @@
 | Service | URL |
 |---|---|
 | **Frontend** | [https://nifty-portfolio-optimizer-vxky.vercel.app](https://nifty-portfolio-optimizer-vxky.vercel.app) |
-| **Backend API** | [https://nifty-optimizer-api-production.up.railway.app](https://nifty-optimizer-api-production.up.railway.app) |
-| **Swagger / OpenAPI** | [https://nifty-optimizer-api-production.up.railway.app/docs](https://nifty-optimizer-api-production.up.railway.app/docs) |
-| **ReDoc** | [https://nifty-optimizer-api-production.up.railway.app/redoc](https://nifty-optimizer-api-production.up.railway.app/redoc) |
+| **Backend API** | [https://nifty-optimizer-api.onrender.com](https://nifty-optimizer-api.onrender.com) |
+| **Swagger / OpenAPI** | [https://nifty-optimizer-api.onrender.com/docs](https://nifty-optimizer-api.onrender.com/docs) |
+| **ReDoc** | [https://nifty-optimizer-api.onrender.com/redoc](https://nifty-optimizer-api.onrender.com/redoc) |
 | **Prometheus / Grafana** | Run locally via Docker — see [Local Demo](#local-demo) |
 
 ---
@@ -125,7 +125,8 @@ Full diagrams, sequence flows, and LLD: **[docs/system_design.md](docs/system_de
 | Container | Docker + Docker Compose |
 | Proxy | Nginx |
 | CI | GitHub Actions (lint → test → build → deploy) |
-| Backend deploy | Railway |
+| Backend deploy | Render (free tier) |
+| Database (prod) | Neon PostgreSQL (free tier) |
 | Frontend deploy | Vercel |
 | Images | GitHub Container Registry (GHCR) |
 
@@ -196,8 +197,8 @@ nifty-portfolio-optimizer/
 ├── nginx/                  # nginx.conf
 ├── docker-compose.yml      # Full local stack (9 services)
 ├── docker-compose.prod.yml # Production overrides
-├── railway.toml            # Railway backend deployment config
-├── render.yaml             # Render alternative config
+├── render.yaml             # Render backend deployment config (active)
+├── railway.toml            # Railway config (legacy — kept for rollback)
 └── vercel.json             # Vercel frontend deployment config
 ```
 
@@ -276,25 +277,30 @@ cd frontend && npm run test:coverage
 
 Two websites, ~5 minutes total. No CLI needed.
 
-### Step 1 — Backend on Railway (free)
+### Step 1 — Database on Neon (free)
 
-1. Go to **[railway.app](https://railway.app)** → **Login with GitHub**
-2. **New Project** → **Deploy from GitHub repo** → select `nifty-portfolio-optimizer`
-3. Click **+ Add** → **Database** → **Add PostgreSQL** *(auto-sets `DATABASE_URL`)*
-4. Click **+ Add** → **Database** → **Add Redis** *(auto-sets `REDIS_URL`)*
-5. Go to your service → **Variables** tab → click **New Variable** for each:
+1. Go to **[neon.tech](https://neon.tech)** → **Login with GitHub**
+2. **Create project** → region **AWS ap-southeast-1 (Singapore)**
+3. Copy the **connection string** (`postgresql://…@ep-….neon.tech/neondb?sslmode=require`)
+
+### Step 2 — Backend on Render (free)
+
+1. Go to **[dashboard.render.com/blueprints](https://dashboard.render.com/blueprints)** → **Login with GitHub**
+2. **New Blueprint Instance** → select `nifty-portfolio-optimizer` — Render reads `render.yaml`
+3. When prompted, fill in the two variables it can't infer:
 
    | Variable | Value |
    |---|---|
-   | `JWT_SECRET_KEY` | `04a7aedd890332203e005f17a6c41e2d7a5ad1eb435bc1fdf5ae105e98106ee4` |
-   | `ENVIRONMENT` | `production` |
-   | `WORKERS` | `2` |
-   | `CORS_ORIGINS` | `["https://nifty-portfolio-optimizer-vxky.vercel.app"]` |
-   | `LOG_FORMAT` | `json` |
+   | `DATABASE_URL` | *(paste the Neon connection string from Step 1)* |
+   | `CORS_ORIGINS` | `https://nifty-portfolio-optimizer-vxky.vercel.app` |
 
-6. Railway builds the Docker image and gives you a URL → **copy it** (looks like `https://nifty-api-production-xxxx.up.railway.app`)
+   Everything else (`JWT_SECRET_KEY`, `ENVIRONMENT`, `WORKERS`, `LOG_FORMAT`) is set by `render.yaml`.
 
-### Step 2 — Frontend on Vercel (free)
+4. **Apply**. The first Docker build takes 5–10 min → you get `https://nifty-optimizer-api.onrender.com`
+
+Full walkthrough, including free-tier caveats: **[docs/RENDER_DEPLOY.md](docs/RENDER_DEPLOY.md)**
+
+### Step 3 — Frontend on Vercel (free)
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Vikas9892/nifty-portfolio-optimizer&root=frontend)
 
@@ -307,29 +313,35 @@ Or manually:
 
    | Variable | Value |
    |---|---|
-   | `VITE_API_URL` | *(paste your Railway URL from Step 1)* |
+   | `VITE_API_URL` | *(paste your Render URL from Step 2)* |
 
 5. Click **Deploy** → Vercel gives you `https://nifty-portfolio-optimizer-vxky.vercel.app`
 
-### Step 3 — Enable CI auto-deploy (optional)
+### Step 4 — Enable CI auto-deploy (optional)
+
+Render already redeploys on every push to `main` (`autoDeploy: true` in `render.yaml`),
+so this step is only needed for the Vercel side and the smoke test.
 
 Go to **GitHub repo → Settings → Secrets and variables → Actions** and add:
 
 | Secret | Where to find it |
 |---|---|
-| `RAILWAY_TOKEN` | Railway → Account Settings → Tokens → **Create Token** |
 | `VERCEL_TOKEN` | Vercel → Settings → Tokens → **Create** |
 | `VERCEL_ORG_ID` | Vercel → Settings → General → **Team ID** |
 | `VERCEL_PROJECT_ID` | Vercel → Project → Settings → **Project ID** |
+| `RENDER_DEPLOY_HOOK` | *(optional)* Render → service → Settings → **Deploy Hook** — only if you set `autoDeploy: false` |
 
 Go to **Settings → Variables → Actions** and add:
 
 | Variable | Value |
 |---|---|
-| `BACKEND_URL` | Your Railway URL |
-| `VITE_API_URL` | Your Railway URL |
+| `BACKEND_URL` | Your Render URL |
+| `VITE_API_URL` | Your Render URL |
 
-After this, every `git push main` triggers: lint → tests → Docker build → Railway deploy → Vercel deploy → smoke test.
+After this, every `git push main` triggers: lint → tests → Docker build → Render deploy → Vercel deploy → smoke test.
+
+> **Free-tier note:** the Render instance sleeps after 15 min idle, so the first
+> request after a quiet period takes ~50 s. See [docs/RENDER_DEPLOY.md](docs/RENDER_DEPLOY.md).
 
 ---
 
