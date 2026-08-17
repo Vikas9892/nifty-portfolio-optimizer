@@ -106,15 +106,16 @@ class PortfolioService:
         return items
 
     def get_by_id(self, portfolio_id: int, user: UserResponse) -> PortfolioDetail:
-        cache_key = f"portfolio:{portfolio_id}"
+        # Key is scoped to the owner. PortfolioDetail carries no user_id, so a
+        # shared "portfolio:<id>" key could not be ownership-checked on a hit and
+        # served other users' portfolios to anyone who guessed an id. Scoping the
+        # key means a non-owner simply misses and falls through to the repository,
+        # which raises AuthorizationError.
+        cache_key = f"portfolio:{user.id}:{portfolio_id}"
         hit = cache.get(cache_key)
         if hit is not None:
-            detail = PortfolioDetail(**hit)
-            if detail.id and _user_owns(detail, user.id):
-                logger.debug("CACHE_HIT | %s", cache_key)
-                return detail
-            # Cached but wrong user — fall through to DB (will raise AuthorizationError)
-            cache.delete(cache_key)
+            logger.debug("CACHE_HIT | %s", cache_key)
+            return PortfolioDetail(**hit)
 
         detail = self._repo.get_by_id(portfolio_id, user.id)
         cache.set(cache_key, detail.model_dump(), ttl=_DETAIL_TTL)
@@ -122,13 +123,8 @@ class PortfolioService:
 
     def delete(self, portfolio_id: int, user: UserResponse) -> DeleteResponse:
         result = self._repo.delete(portfolio_id, user.id)
-        cache.delete(f"portfolio:{portfolio_id}")
+        cache.delete(f"portfolio:{user.id}:{portfolio_id}")
         cache.delete(f"portfolio:history:{user.id}")
         self._audit.log(user.id, "PORTFOLIO_DELETED", f"id={portfolio_id}")
         logger.info("PORTFOLIO_DELETED | user_id=%s portfolio_id=%s", user.id, portfolio_id)
         return result
-
-
-def _user_owns(detail: PortfolioDetail, user_id: int) -> bool:
-    """Cached detail doesn't carry user_id — ownership verified at save time."""
-    return True
