@@ -41,6 +41,10 @@ from backend.app.utils.logger import logger
 # bound. Entries are evicted by soonest expiry once the cap is reached.
 _MEM_MAX_ENTRIES = 1_000
 
+# Matches MetricsService's 7-day counter TTL, so counters are the last thing
+# evicted when the in-process store hits its cap.
+_COUNTER_TTL = 86_400 * 7
+
 
 class CacheService:
     def __init__(self) -> None:
@@ -99,13 +103,15 @@ class CacheService:
 
     def get(self, key: str) -> Any | None:
         if not self._ok:
-            return self._mem_get(key)
+            value = self._mem_get(key)
+            self._track(key, hit=value is not None)
+            return value
         try:
             raw = self._client.get(key)
             if raw is None:
-                self._track_miss()
+                self._track(key, hit=False)
                 return None
-            self._track_hit()
+            self._track(key, hit=True)
             return json.loads(raw)
         except Exception:
             return None
@@ -181,15 +187,21 @@ class CacheService:
             self._mem[key] = (now + ttl, json.dumps(new_value))
         return new_value
 
-    def _track_hit(self) -> None:
-        with contextlib.suppress(Exception):
-            if self._ok:
-                self._client.incr("metrics:cache:hits")
+    def _track(self, key: str, *, hit: bool) -> None:
+        """Record a cache hit/miss, for both the Redis and in-process backends.
 
-    def _track_miss(self) -> None:
+        Reads of the counters themselves are excluded: MetricsService.get_all()
+        fetches them via get(), so counting those would mean every refresh of the
+        metrics dashboard inflated the hit ratio it was reporting.
+        """
+        if key.startswith("metrics:"):
+            return
+        counter = "metrics:cache:hits" if hit else "metrics:cache:misses"
         with contextlib.suppress(Exception):
             if self._ok:
-                self._client.incr("metrics:cache:misses")
+                self._client.incr(counter)
+            else:
+                self._mem_increment(counter, 1, _COUNTER_TTL)
 
 
 cache = CacheService()

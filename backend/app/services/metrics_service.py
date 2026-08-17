@@ -12,7 +12,12 @@ _NS = "metrics"  # Redis key namespace
 
 
 class MetricsService:
-    """Lightweight counter store. All values survive restarts via Redis persistence."""
+    """Lightweight counter store.
+
+    Values survive restarts only when Redis is configured. On the in-process
+    fallback they are per-process and reset whenever the app restarts — which on
+    a free-tier host means every deploy and every wake from idle spin-down.
+    """
 
     def increment(self, key: str, delta: int = 1) -> None:
         cache.increment(f"{_NS}:{key}", delta, ttl=86_400 * 7)

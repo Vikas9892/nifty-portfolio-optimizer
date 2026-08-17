@@ -82,21 +82,65 @@ class TestCircuitBreaker:
 # ── Metrics Service ────────────────────────────────────────────────────────────
 
 class TestMetricsService:
-    def test_get_all_returns_zeros_without_redis(self):
+    def test_get_all_reports_every_counter_the_dashboard_reads(self):
         from backend.app.services.metrics_service import MetricsService
         svc = MetricsService()
         result = svc.get_all()
         assert isinstance(result, dict)
-        assert "api:requests:total" in result
-        assert "cache:hit_ratio" in result
-        assert result["cache:hit_ratio"] == 0  # no Redis → no hits → ratio = 0
+        # A key missing here crashes the admin dashboard's render.
+        for key in (
+            "api:requests:total",
+            "api:errors:total",
+            "cache:hits",
+            "cache:misses",
+            "cache:hit_ratio",
+            "optimize:count",
+            "optimize:avg_ms",
+            "jobs:queued",
+            "jobs:completed",
+            "jobs:failed",
+        ):
+            assert key in result, f"missing counter: {key}"
+        assert 0 <= result["cache:hit_ratio"] <= 1
 
-    def test_increment_no_op_without_redis(self):
+    def test_counters_are_recorded_without_redis(self):
+        """Without Redis the in-process fallback still records counters.
+
+        This previously asserted everything stayed at zero, which is what made
+        the metrics dashboard show a wall of zeros on a Redis-free deployment.
+        Deltas are used so the assertion holds regardless of test ordering.
+        """
         from backend.app.services.metrics_service import MetricsService
         svc = MetricsService()
-        # Should not raise — gracefully no-ops when Redis is absent
-        svc.increment("test:counter")
-        svc.increment("test:counter", delta=5)
+        before = svc.get_all()["jobs:queued"]
+        svc.increment("jobs:queued")
+        svc.increment("jobs:queued", delta=5)
+        assert svc.get_all()["jobs:queued"] == before + 6
+
+    def test_record_duration_feeds_the_average(self):
+        from backend.app.services.metrics_service import MetricsService
+        svc = MetricsService()
+        svc.record_duration("unit:test:op", 1000.0)
+        svc.record_duration("unit:test:op", 3000.0)
+        all_metrics = svc.get_all()
+        # get_all() only surfaces the known keys, so assert via the raw counters.
+        from backend.app.services.cache_service import cache
+        total = cache.get("metrics:unit:test:op:sum")
+        count = cache.get("metrics:unit:test:op:count")
+        assert total == 4000.0
+        assert count == 2
+        assert isinstance(all_metrics, dict)
+
+    def test_reading_metrics_does_not_inflate_the_hit_ratio(self):
+        """get_all() fetches counters through cache.get(); counting those reads
+        as cache hits would make every dashboard refresh move its own numbers."""
+        from backend.app.services.metrics_service import MetricsService
+        svc = MetricsService()
+        first = svc.get_all()
+        for _ in range(5):
+            latest = svc.get_all()
+        assert latest["cache:hits"] == first["cache:hits"]
+        assert latest["cache:misses"] == first["cache:misses"]
 
     def test_timed_context_manager(self):
         import time
