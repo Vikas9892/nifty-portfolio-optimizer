@@ -1,18 +1,22 @@
 import { useEffect, useState } from 'react'
 import api from '../services/api'
 
+// Every key is optional: the API omits counters that the current deployment
+// doesn't produce (e.g. "queue:depth" without Redis). Reading one of those as a
+// plain number and calling .toLocaleString() on it unmounts the whole page, so
+// values are always read through `num()` below.
 interface Metrics {
-  'api:requests:total': number
-  'api:errors:total': number
-  'cache:hits': number
-  'cache:misses': number
-  'cache:hit_ratio': number
-  'optimize:count': number
-  'optimize:avg_ms': number
-  'jobs:queued': number
-  'jobs:completed': number
-  'jobs:failed': number
-  'queue:depth': number
+  'api:requests:total'?: number
+  'api:errors:total'?: number
+  'cache:hits'?: number
+  'cache:misses'?: number
+  'cache:hit_ratio'?: number
+  'optimize:count'?: number
+  'optimize:avg_ms'?: number
+  'jobs:queued'?: number
+  'jobs:completed'?: number
+  'jobs:failed'?: number
+  'queue:depth'?: number
 }
 
 function MetricTile({
@@ -68,7 +72,13 @@ export function AdminDashboard() {
     return () => clearInterval(timer)
   }, [])
 
-  const hitRatio = metrics ? `${(metrics['cache:hit_ratio'] * 100).toFixed(1)}%` : '—'
+  // Missing or non-numeric counters read as 0 rather than crashing the render.
+  const num = (key: keyof Metrics): number => {
+    const v = metrics?.[key]
+    return typeof v === 'number' && Number.isFinite(v) ? v : 0
+  }
+
+  const hitRatio = metrics ? `${(num('cache:hit_ratio') * 100).toFixed(1)}%` : '—'
 
   return (
     <div className="space-y-6">
@@ -114,24 +124,24 @@ export function AdminDashboard() {
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
               <MetricTile
                 label="Total Requests"
-                value={metrics['api:requests:total'].toLocaleString()}
+                value={num('api:requests:total').toLocaleString()}
                 accent="blue"
               />
               <MetricTile
                 label="Errors (5xx)"
-                value={metrics['api:errors:total'].toLocaleString()}
-                accent={metrics['api:errors:total'] > 0 ? 'red' : undefined}
+                value={num('api:errors:total').toLocaleString()}
+                accent={num('api:errors:total') > 0 ? 'red' : undefined}
               />
               <MetricTile
                 label="Cache Hit Ratio"
                 value={hitRatio}
-                sub={`${metrics['cache:hits']} hits / ${metrics['cache:misses']} misses`}
-                accent={metrics['cache:hit_ratio'] > 0.7 ? 'green' : 'yellow'}
+                sub={`${num('cache:hits')} hits / ${num('cache:misses')} misses`}
+                accent={num('cache:hit_ratio') > 0.7 ? 'green' : 'yellow'}
               />
               <MetricTile
                 label="Optimizations"
-                value={metrics['optimize:count'].toLocaleString()}
-                sub={`avg ${metrics['optimize:avg_ms'].toFixed(0)} ms`}
+                value={num('optimize:count').toLocaleString()}
+                sub={`avg ${num('optimize:avg_ms').toFixed(0)} ms`}
                 accent="blue"
               />
             </div>
@@ -145,22 +155,22 @@ export function AdminDashboard() {
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
               <MetricTile
                 label="Queue Depth"
-                value={metrics['queue:depth'].toLocaleString()}
-                accent={metrics['queue:depth'] > 10 ? 'yellow' : undefined}
+                value={num('queue:depth').toLocaleString()}
+                accent={num('queue:depth') > 10 ? 'yellow' : undefined}
               />
               <MetricTile
                 label="Total Queued"
-                value={metrics['jobs:queued'].toLocaleString()}
+                value={num('jobs:queued').toLocaleString()}
               />
               <MetricTile
                 label="Completed"
-                value={metrics['jobs:completed'].toLocaleString()}
+                value={num('jobs:completed').toLocaleString()}
                 accent="green"
               />
               <MetricTile
                 label="Failed"
-                value={metrics['jobs:failed'].toLocaleString()}
-                accent={metrics['jobs:failed'] > 0 ? 'red' : undefined}
+                value={num('jobs:failed').toLocaleString()}
+                accent={num('jobs:failed') > 0 ? 'red' : undefined}
               />
             </div>
           </section>

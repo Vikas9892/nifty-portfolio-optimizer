@@ -25,6 +25,11 @@ def get_metrics(
 ) -> SuccessResponse[dict]:
     data = metrics.get_all()
 
+    # Always present, so clients can rely on the key existing. Previously this was
+    # only assigned inside the `has_redis` branch or the `except`, so a Redis-free
+    # deployment returned no "queue:depth" at all and the dashboard crashed on it.
+    data["queue:depth"] = 0
+
     # Enrich with live RQ queue depth when Redis is available
     try:
         from backend.app.core.config import settings
